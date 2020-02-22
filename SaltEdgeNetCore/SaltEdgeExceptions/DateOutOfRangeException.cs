@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public DateOutOfRangeException(string message)
+        public DateOutOfRangeException(string message) : base(message)
         {
         }
     }

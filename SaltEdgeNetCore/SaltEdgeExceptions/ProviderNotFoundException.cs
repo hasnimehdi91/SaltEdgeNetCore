@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public ProviderNotFoundException(string message)
+        public ProviderNotFoundException(string message) : base(message)
         {
         }
     }

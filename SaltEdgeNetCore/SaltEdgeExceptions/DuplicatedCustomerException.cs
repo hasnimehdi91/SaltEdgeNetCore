@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public DuplicatedCustomerException(string message)
+        public DuplicatedCustomerException(string message) : base(message)
         {
         }
     }

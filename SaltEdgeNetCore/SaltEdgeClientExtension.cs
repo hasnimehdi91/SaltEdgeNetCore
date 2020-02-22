@@ -7,7 +7,7 @@ namespace SaltEdgeNetCore
     {
         private static IServiceCollection AddSaltEdge(this IServiceCollection services)
         {
-            services.AddTransient<ISaltEdgeClient, SaltEdgeClient>();
+            services.AddTransient<ISaltEdgeClient, SaltEdgeClientV5>();
             return services;
         }
     }

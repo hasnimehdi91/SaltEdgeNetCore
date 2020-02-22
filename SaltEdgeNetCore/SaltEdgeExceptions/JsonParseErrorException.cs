@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public JsonParseErrorException(string message)
+        public JsonParseErrorException(string message) : base(message)
         {
         }
     }

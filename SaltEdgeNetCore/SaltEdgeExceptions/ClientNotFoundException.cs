@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public ClientNotFoundException(string message)
+        public ClientNotFoundException(string message) : base(message)
         {
         }
     }

@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public ClientDisabledException(string message)
+        public ClientDisabledException(string message) : base(message)
         {
         }
     }

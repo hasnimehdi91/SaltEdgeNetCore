@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public WrongRequestFormatException(string message)
+        public WrongRequestFormatException(string message) : base(message)
         {
         }
     }
