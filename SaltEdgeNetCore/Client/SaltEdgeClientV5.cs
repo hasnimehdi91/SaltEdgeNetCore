@@ -5,10 +5,12 @@ using RestSharp;
 using RestSharp.Serializers.NewtonsoftJson;
 using SaltEdgeNetCore.Client.Endpoints;
 using SaltEdgeNetCore.Extension;
+using SaltEdgeNetCore.Models.Connections;
 using SaltEdgeNetCore.Models.ConnectSession;
 using SaltEdgeNetCore.Models.Country;
 using SaltEdgeNetCore.Models.Customer;
 using SaltEdgeNetCore.Models.Error;
+using SaltEdgeNetCore.Models.OAuthProvider;
 using SaltEdgeNetCore.Models.Provider;
 using SaltEdgeNetCore.Models.Responses;
 using SaltEdgeNetCore.SaltEdgeExceptions;
@@ -167,13 +169,18 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Customer>, Paging> CustomersList(string nextId = default)
+        public Response<IEnumerable<Customer>, Paging> CustomersList(string fromId = default, string nextId = default)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
 
             if (!string.IsNullOrWhiteSpace(nextId))
             {
                 request.AddQueryParameter("next_id", nextId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", nextId, true);
             }
 
             var apiResponse =
@@ -305,7 +312,7 @@ namespace SaltEdgeNetCore.Client
                     "Invalid argument please visit salt edge documentation: " +
                     "https://docs.saltedge.com/account_information/v5/#connect_sessions-reconnect");
             }
-            
+
             var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh");
 
             request.AddJsonBody(new
@@ -322,6 +329,82 @@ namespace SaltEdgeNetCore.Client
 
             HandleError(apiResponse.Content);
             return null;
+        }
+
+        public OAuthProviderResponse OAuthProviderCreate(CreateOAuthProvider oAuthProvider)
+        {
+            if (oAuthProvider == null)
+            {
+                throw new InvalidArgumentException("Null CreateOAuthProvider object");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create");
+            request.AddJsonBody(oAuthProvider);
+
+            var apiResponse =
+                _client.Post<SimpleResponse<OAuthProviderResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public OAuthProviderResponse OAuthProviderReconnect(ReconnectOAuthProvider oAuthProvider)
+        {
+            if (oAuthProvider == null)
+            {
+                throw new InvalidArgumentException("Null ReconnectOAuthProvider object");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect");
+            request.AddJsonBody(oAuthProvider);
+
+            var apiResponse =
+                _client.Post<SimpleResponse<OAuthProviderResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public AuthorizeOAuthProviderResponse AuthProviderAuthorize(AuthorizeOAuthProvider oAuthProvider)
+        {
+            if (oAuthProvider == null)
+            {
+                throw new InvalidArgumentException("Null AuthorizeOAuthProvider object");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize");
+            request.AddJsonBody(oAuthProvider);
+
+            var apiResponse =
+                _client.Put<SimpleResponse<AuthorizeOAuthProviderResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<Connection>, Paging> ConnectionsList(string customerId, string fromId = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Connection ConnectionShow(string connectionId)
+        {
+            throw new NotImplementedException();
         }
 
         private static void HandleError(string content)

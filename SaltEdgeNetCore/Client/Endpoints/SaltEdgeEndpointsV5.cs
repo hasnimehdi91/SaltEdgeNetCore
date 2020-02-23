@@ -10,5 +10,6 @@ namespace SaltEdgeNetCore.Client.Endpoints
         public static SaltEdgeEndpointsV5 Providers => new SaltEdgeEndpointsV5("providers");
         public static SaltEdgeEndpointsV5 Customers => new SaltEdgeEndpointsV5("customers");
         public static SaltEdgeEndpointsV5 ConnectSessions => new SaltEdgeEndpointsV5("connect_sessions");
+        public static SaltEdgeEndpointsV5 OauthProviders => new SaltEdgeEndpointsV5("oauth_providers");
     }
 }

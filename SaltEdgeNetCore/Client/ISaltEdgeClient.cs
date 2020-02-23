@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using SaltEdgeNetCore.Models.Connections;
 using SaltEdgeNetCore.Models.ConnectSession;
 using SaltEdgeNetCore.Models.Country;
 using SaltEdgeNetCore.Models.Customer;
+using SaltEdgeNetCore.Models.OAuthProvider;
 using SaltEdgeNetCore.Models.Provider;
 using SaltEdgeNetCore.Models.Responses;
 
@@ -73,8 +75,10 @@ namespace SaltEdgeNetCore.Client
         /// <summary>
         /// List all of your app’s customers.
         /// </summary>
+        /// <param name="fromId"> Starting from id</param>
+        /// <param name="nextId"> Next id fetch</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<Customer>, Paging> CustomersList(string nextId = default);
+        Response<IEnumerable<Customer>, Paging> CustomersList(string fromId = default, string nextId = default);
 
         /// <summary>
         /// Remove a customer
@@ -117,5 +121,41 @@ namespace SaltEdgeNetCore.Client
         /// <param name="session">RefreshSession object</param>
         /// <returns>SessionResponse instance</returns>
         SessionResponse SessionRefresh(RefreshSession session);
+
+        /// <summary>
+        /// create a connection for an OAuth provider
+        /// </summary>
+        /// <param name="oAuthProvider">CreateOAuthProvider object</param>
+        /// <returns>OAuthProviderResponse instance</returns>
+        OAuthProviderResponse OAuthProviderCreate(CreateOAuthProvider oAuthProvider);
+
+        /// <summary>
+        /// reconnect a connection for an OAuth provider
+        /// </summary>
+        /// <param name="oAuthProvider">ReconnectOAuthProvider object</param>
+        /// <returns>OAuthProviderResponse instance</returns>
+        OAuthProviderResponse OAuthProviderReconnect(ReconnectOAuthProvider oAuthProvider);
+        
+        /// <summary>
+        /// authorize a connection for an OAuth provider when using client owned provider keys.
+        /// </summary>
+        /// <param name="oAuthProvider">AuthorizeOAuthProvider object</param>
+        /// <returns>AuthorizeOAuthProviderResponse instance</returns>
+        AuthorizeOAuthProviderResponse AuthProviderAuthorize(AuthorizeOAuthProvider oAuthProvider);
+
+        /// <summary>
+        /// List all the connections accessible to your application for certain customer.
+        /// </summary>
+        /// <param name="customerId">The id of the customer</param>
+        /// <param name="fromId">Fetch from id</param>
+        /// <returns></returns>
+        Response<IEnumerable<Connection>, Paging> ConnectionsList(string customerId, string fromId = default);
+
+        /// <summary>
+        /// Get a connection
+        /// </summary>
+        /// <param name="connectionId">The id of the connection</param>
+        /// <returns></returns>
+        Connection ConnectionShow(string connectionId);
     }
 }

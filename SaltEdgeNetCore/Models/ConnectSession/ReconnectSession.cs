@@ -1,4 +1,5 @@
 using Newtonsoft.Json;
+using SaltEdgeNetCore.Models.Consents;
 
 namespace SaltEdgeNetCore.Models.ConnectSession
 {

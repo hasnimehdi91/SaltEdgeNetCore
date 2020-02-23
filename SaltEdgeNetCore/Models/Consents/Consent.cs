@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace SaltEdgeNetCore.Models.ConnectSession
+namespace SaltEdgeNetCore.Models.Consents
 {
     public class Consent
     {

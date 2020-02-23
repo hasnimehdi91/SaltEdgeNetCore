@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using Newtonsoft.Json;
+using SaltEdgeNetCore.Models.Attempts;
 
 namespace SaltEdgeNetCore.Models.ConnectSession
 {
