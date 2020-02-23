@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Serialization;
 using RestSharp;
 using RestSharp.Serializers.NewtonsoftJson;
 using SaltEdgeNetCore.Client.Endpoints;
 using SaltEdgeNetCore.Extension;
+using SaltEdgeNetCore.Models.ConnectSession;
 using SaltEdgeNetCore.Models.Country;
 using SaltEdgeNetCore.Models.Customer;
 using SaltEdgeNetCore.Models.Error;
@@ -167,11 +167,18 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Customer>, Paging> CustomersList()
+        public Response<IEnumerable<Customer>, Paging> CustomersList(string nextId = default)
         {
+            var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
+
+            if (!string.IsNullOrWhiteSpace(nextId))
+            {
+                request.AddQueryParameter("next_id", nextId, true);
+            }
+
             var apiResponse =
                 _client.Get<Response<IEnumerable<Customer>, Paging>>(
-                    new RestRequest(SaltEdgeEndpointsV5.Customers.Value));
+                    request);
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data;
@@ -229,6 +236,85 @@ namespace SaltEdgeNetCore.Client
             var apiResponse =
                 _client.Put<SimpleResponse<UnlockCustomer>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public SessionResponse SessionCreate(CreateSession session)
+        {
+            if (session == null || string.IsNullOrWhiteSpace(session.CustomerId))
+            {
+                throw new InvalidArgumentException(
+                    "Invalid argument please visit salt edge documentation: " +
+                    "https://docs.saltedge.com/account_information/v5/#connect_sessions-create");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create");
+            request.AddJsonBody(new
+            {
+                data = session
+            });
+
+            var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public SessionResponse SessionReconnect(ReconnectSession session)
+        {
+            if (session == null || string.IsNullOrWhiteSpace(session.ConnectionId))
+            {
+                throw new InvalidArgumentException(
+                    "Invalid argument please visit salt edge documentation: " +
+                    "https://docs.saltedge.com/account_information/v5/#connect_sessions-reconnect");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect");
+            request.AddJsonBody(new
+            {
+                data = session
+            });
+
+            var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public SessionResponse SessionRefresh(RefreshSession session)
+        {
+            if (session == null || string.IsNullOrWhiteSpace(session.ConnectionId))
+            {
+                throw new InvalidArgumentException(
+                    "Invalid argument please visit salt edge documentation: " +
+                    "https://docs.saltedge.com/account_information/v5/#connect_sessions-reconnect");
+            }
+            
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh");
+
+            request.AddJsonBody(new
+            {
+                data = session
+            });
+
+            var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
+
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data.Data;

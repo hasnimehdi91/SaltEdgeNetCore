@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using SaltEdgeNetCore.Models.ConnectSession;
 using SaltEdgeNetCore.Models.Country;
 using SaltEdgeNetCore.Models.Customer;
 using SaltEdgeNetCore.Models.Provider;
@@ -73,7 +74,7 @@ namespace SaltEdgeNetCore.Client
         /// List all of your app’s customers.
         /// </summary>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<Customer>, Paging> CustomersList();
+        Response<IEnumerable<Customer>, Paging> CustomersList(string nextId = default);
 
         /// <summary>
         /// Remove a customer
@@ -95,5 +96,26 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">the id of the customer</param>
         /// <returns>UnlockCustomer instance</returns>
         UnlockCustomer CustomerUnlock(string customerId);
+
+        /// <summary>
+        /// Allows to create a connect session, which will be used to access Salt Edge Connect for connection creation.
+        /// </summary>
+        /// <param name="session">CreateSession object</param>
+        /// <returns>SessionResponse instance</returns>
+        SessionResponse SessionCreate(CreateSession session);
+
+        /// <summary>
+        /// Allows to reconnect session, which will be used to access Salt Edge Connect to reconnect a connection.
+        /// </summary>
+        /// <param name="session">ReconnectSession object</param>
+        /// <returns>SessionResponse instance</returns>
+        SessionResponse SessionReconnect(ReconnectSession session);
+
+        /// <summary>
+        /// Allows refresh a session, which will be used to access Salt Edge Connect to refresh a connection.
+        /// </summary>
+        /// <param name="session">RefreshSession object</param>
+        /// <returns>SessionResponse instance</returns>
+        SessionResponse SessionRefresh(RefreshSession session);
     }
 }
