@@ -8,6 +8,6 @@ namespace SaltEdgeNetCore.Models.Error
         public Error Error { get; set; }
 
         [JsonProperty("request")]
-        public Request Request { get; set; }
+        public object Request { get; set; }
     }
 }

@@ -8,7 +8,7 @@ namespace SaltEdgeNetCore.SaltEdgeExceptions
         {
         }
 
-        public SaltEdgeMappingException(string message)
+        public SaltEdgeMappingException(string message): base(message)
         {
         }
     }

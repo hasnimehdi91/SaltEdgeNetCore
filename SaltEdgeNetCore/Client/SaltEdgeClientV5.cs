@@ -5,8 +5,11 @@ using Newtonsoft.Json.Serialization;
 using RestSharp;
 using RestSharp.Serializers.NewtonsoftJson;
 using SaltEdgeNetCore.Client.Endpoints;
+using SaltEdgeNetCore.Extension;
 using SaltEdgeNetCore.Models.Country;
+using SaltEdgeNetCore.Models.Customer;
 using SaltEdgeNetCore.Models.Error;
+using SaltEdgeNetCore.Models.Provider;
 using SaltEdgeNetCore.Models.Responses;
 using SaltEdgeNetCore.SaltEdgeExceptions;
 
@@ -16,26 +19,216 @@ namespace SaltEdgeNetCore.Client
     {
         private IDictionary<string, string> _headers;
 
+        private IRestClient _client;
+
         public SaltEdgeClientV5()
         {
             _headers = new Dictionary<string, string>();
+            _client = GetClient();
         }
 
         public ISaltEdgeClient SetHeaders(IDictionary<string, string> headers)
         {
             _headers = headers;
+            _client = GetClient();
             return this;
         }
 
-        public ISaltEdgeClient SetBody(object body)
+        public IEnumerable<Country> ListCountries()
         {
-            throw new System.NotImplementedException();
+            var apiResponse = _client
+                .Get<SimpleResponse<IEnumerable<Country>>>(new RestRequest(SaltEdgeEndpointsV5.CountryList.Value));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
         }
 
-        public IEnumerable<Country> ListCountriesAsync()
+        public Provider ProviderShow(string providerCode)
         {
-            var apiResponse = GetClient()
-                .Get<SimpleResponse<IEnumerable<Country>>>(new RestRequest(SaltEdgeEndpointsV5.CountryList.Value));
+            var apiResponse = _client
+                .Get<SimpleResponse<Provider>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<Provider>, Paging> ProvidersList(DateTime? fromDate = null, string fromId = default,
+            string countryCode = default, string mode = default,
+            bool includeFakeProviders = false, bool includeProviderFields = false, string providerKeyOwner = default)
+        {
+            var request = new RestRequest(SaltEdgeEndpointsV5.Providers.Value);
+            if (!string.IsNullOrWhiteSpace(countryCode))
+            {
+                request.AddQueryParameter("country_code", "KW", true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            if (fromDate != null)
+            {
+                request.AddQueryParameter("from_date", fromDate.ToString(Config.DateFormat), true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(mode))
+            {
+                if (mode != "oauth" || mode != "web" || mode != "api" || mode != "file")
+                {
+                    throw new InvalidArgumentException("mode parameter should be 'oauth', 'web', 'api' or 'file'");
+                }
+
+                request.AddQueryParameter("mode", mode, true);
+            }
+
+            if (includeFakeProviders)
+            {
+                request.AddQueryParameter("include_fake_providers", "true", true);
+            }
+
+            if (includeProviderFields)
+            {
+                request.AddQueryParameter("include_provider_fields", "true", true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(providerKeyOwner))
+            {
+                if (providerKeyOwner != "client" || providerKeyOwner != "saltedge")
+                {
+                    throw new InvalidArgumentException("providerKeyOwner parameter should be 'client' or 'saltedge'");
+                }
+
+                request.AddQueryParameter("provider_key_owner", providerKeyOwner, true);
+            }
+
+
+            var apiResponse = _client.Get<Response<IEnumerable<Provider>, Paging>>(request);
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Customer CreateCustomer(string customerId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Missing customer id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
+            request.AddJsonBody(new
+            {
+                data = new
+                {
+                    identifier = customerId
+                }
+            });
+            var apiResponse = _client.Post<SimpleResponse<Customer>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Customer CustomerShow(string customerId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("customer id is null");
+            }
+
+            var apiResponse =
+                _client.Get<SimpleResponse<Customer>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<Customer>, Paging> CustomersList()
+        {
+            var apiResponse =
+                _client.Get<Response<IEnumerable<Customer>, Paging>>(
+                    new RestRequest(SaltEdgeEndpointsV5.Customers.Value));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public RemoveCustomer CustomerRemove(string customerId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("customer id is null");
+            }
+
+            var apiResponse =
+                _client.Delete<SimpleResponse<RemoveCustomer>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public LockCustomer CustomerLock(string customerId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("customer id is null");
+            }
+
+            var apiResponse =
+                _client.Put<SimpleResponse<LockCustomer>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public UnlockCustomer CustomerUnlock(string customerId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("customer id is null");
+            }
+
+            var apiResponse =
+                _client.Put<SimpleResponse<UnlockCustomer>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock"));
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data.Data;
@@ -47,15 +240,8 @@ namespace SaltEdgeNetCore.Client
 
         private static void HandleError(string content)
         {
-            try
-            {
-                var error = JsonConvert.DeserializeObject<SaltEdgeError>(content);
-            }
-            catch (Exception)
-            {
-                Console.WriteLine();
-                throw new SaltEdgeMappingException("Unable to map error");
-            }
+            var error = JsonConvert.DeserializeObject<SaltEdgeError>(content);
+            ErrorHandler.Handle(error.Error.Class, error.Error.Message);
         }
 
         private IRestClient GetClient()

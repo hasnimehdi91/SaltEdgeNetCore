@@ -7,5 +7,7 @@ namespace SaltEdgeNetCore.Client.Endpoints
         public string Value { get; }
         
         public static SaltEdgeEndpointsV5 CountryList => new SaltEdgeEndpointsV5("countries");
+        public static SaltEdgeEndpointsV5 Providers => new SaltEdgeEndpointsV5("providers");
+        public static SaltEdgeEndpointsV5 Customers => new SaltEdgeEndpointsV5("customers");
     }
 }

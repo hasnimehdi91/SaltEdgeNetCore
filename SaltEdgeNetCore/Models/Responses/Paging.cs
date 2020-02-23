@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace SaltEdgeNetCore.Models
+namespace SaltEdgeNetCore.Models.Responses
 {
     public class Paging
     {
