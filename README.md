@@ -10,7 +10,11 @@ This is released under an Apache 2.0 license. See the file LICENSE.txt for more 
 The API corresponds to the [Salt Edge Documentation](https://docs.saltedge.com/)
 
 ### Usage
-1- In the ConfigureServices method of Startup.cs, register the SaltEdgeNetCore..
+1- Download nuget package
+```
+<PackageReference Include="SaltEdgeNetCore" Version="1.0.1" />
+``` 
+2- In the ConfigureServices method of Startup.cs, register the SaltEdgeNetCore..
 ```csharp
 public void ConfigureServices(IServiceCollection services)
 {
@@ -18,7 +22,7 @@ public void ConfigureServices(IServiceCollection services)
 }
 ```
 
-2- Inject the service on the controller..
+3- Inject the service on the controller..
 ```csharp
 public class TestController : Controller
     {
