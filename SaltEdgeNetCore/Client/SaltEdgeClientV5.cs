@@ -1,23 +1,35 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using RestSharp;
 using RestSharp.Serializers.NewtonsoftJson;
 using SaltEdgeNetCore.Client.Endpoints;
 using SaltEdgeNetCore.Extension;
+using SaltEdgeNetCore.Models.Account;
+using SaltEdgeNetCore.Models.Assets;
+using SaltEdgeNetCore.Models.Attempts;
+using SaltEdgeNetCore.Models.Category;
 using SaltEdgeNetCore.Models.Connections;
 using SaltEdgeNetCore.Models.ConnectSession;
+using SaltEdgeNetCore.Models.Consents;
 using SaltEdgeNetCore.Models.Country;
+using SaltEdgeNetCore.Models.Currencies;
 using SaltEdgeNetCore.Models.Customer;
 using SaltEdgeNetCore.Models.Error;
+using SaltEdgeNetCore.Models.HolderInfo;
+using SaltEdgeNetCore.Models.Merchant;
 using SaltEdgeNetCore.Models.OAuthProvider;
 using SaltEdgeNetCore.Models.Provider;
+using SaltEdgeNetCore.Models.Rates;
 using SaltEdgeNetCore.Models.Responses;
+using SaltEdgeNetCore.Models.Transaction;
 using SaltEdgeNetCore.SaltEdgeExceptions;
 
 namespace SaltEdgeNetCore.Client
 {
-    public class SaltEdgeClientV5 : ISaltEdgeClient
+    public class SaltEdgeClientV5 : ISaltEdgeClientV5
     {
         private IDictionary<string, string> _headers;
 
@@ -29,7 +41,7 @@ namespace SaltEdgeNetCore.Client
             _client = GetClient();
         }
 
-        public ISaltEdgeClient SetHeaders(IDictionary<string, string> headers)
+        public ISaltEdgeClientV5 SetHeaders(IDictionary<string, string> headers)
         {
             _headers = headers;
             _client = GetClient();
@@ -70,7 +82,7 @@ namespace SaltEdgeNetCore.Client
             var request = new RestRequest(SaltEdgeEndpointsV5.Providers.Value);
             if (!string.IsNullOrWhiteSpace(countryCode))
             {
-                request.AddQueryParameter("country_code", "KW", true);
+                request.AddQueryParameter("country_code", countryCode, true);
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
@@ -128,7 +140,7 @@ namespace SaltEdgeNetCore.Client
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                throw new InvalidArgumentException("Missing customer id");
+                throw new InvalidArgumentException("Null customer id");
             }
 
             var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
@@ -154,7 +166,7 @@ namespace SaltEdgeNetCore.Client
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                throw new InvalidArgumentException("customer id is null");
+                throw new InvalidArgumentException("Null customer id ");
             }
 
             var apiResponse =
@@ -199,7 +211,7 @@ namespace SaltEdgeNetCore.Client
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                throw new InvalidArgumentException("customer id is null");
+                throw new InvalidArgumentException("Null customer id");
             }
 
             var apiResponse =
@@ -218,7 +230,7 @@ namespace SaltEdgeNetCore.Client
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                throw new InvalidArgumentException("customer id is null");
+                throw new InvalidArgumentException("Null customer id");
             }
 
             var apiResponse =
@@ -237,7 +249,7 @@ namespace SaltEdgeNetCore.Client
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
-                throw new InvalidArgumentException("customer id is null");
+                throw new InvalidArgumentException("Null customer id");
             }
 
             var apiResponse =
@@ -399,12 +411,646 @@ namespace SaltEdgeNetCore.Client
 
         public Response<IEnumerable<Connection>, Paging> ConnectionsList(string customerId, string fromId = default)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Null customer id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Connections.Value);
+
+            request.AddQueryParameter("customer_id", customerId, true);
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            var apiResponse = _client.Get<Response<IEnumerable<Connection>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
         }
 
         public Connection ConnectionShow(string connectionId)
         {
-            throw new NotImplementedException();
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var apiResponse =
+                _client.Get<SimpleResponse<Connection>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public RemoveConnection ConnectionRemove(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var apiResponse =
+                _client.Delete<SimpleResponse<RemoveConnection>>(
+                    new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public HolderInfo HolderInfoShow(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.HolderInfo.Value);
+            request.AddQueryParameter("connection_id", connectionId, true);
+
+            var apiResponse = _client.Get<SimpleResponse<HolderInfo>>(request);
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<Attempt>, Paging> AttemptsList(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Attempts.Value);
+            request.AddQueryParameter("connection_id", connectionId, true);
+
+            var apiResponse = _client.Get<Response<IEnumerable<Attempt>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Attempt AttemptShow(string connectionId, string attemptId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            if (string.IsNullOrWhiteSpace(attemptId))
+            {
+                throw new InvalidArgumentException("Null attempt id");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}");
+            request.AddQueryParameter("connection_id", connectionId, true);
+            var apiResponse = _client.Get<SimpleResponse<Attempt>>(request);
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<Account>, Paging> AccountList(string connectionId, string customerId = default,
+            string fromId = default)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Either connection id or customer id should not be null");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Accounts.Value);
+
+            if (!string.IsNullOrWhiteSpace(connectionId))
+            {
+                request.AddQueryParameter("connection_id", connectionId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(customerId))
+            {
+                request.AddQueryParameter("customer_id", customerId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            var apiResponse = _client.Get<Response<IEnumerable<Account>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+
+            return null;
+        }
+
+        public Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsList(string connectionId,
+            string accountId = default, string fromId = default)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Transactions.Value);
+            request.AddQueryParameter("connection_id", connectionId, true);
+
+            if (!string.IsNullOrWhiteSpace(accountId))
+            {
+                request.AddQueryParameter("account_id", accountId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsDuplicatedList(string connectionId,
+            string accountId = default, string fromId = default)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicates");
+            request.AddQueryParameter("connection_id", connectionId, true);
+
+            if (!string.IsNullOrWhiteSpace(accountId))
+            {
+                request.AddQueryParameter("account_id", accountId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsPendingList(string connectionId,
+            string accountId = default, string fromId = default)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/pending");
+            request.AddQueryParameter("connection_id", connectionId, true);
+
+            if (!string.IsNullOrWhiteSpace(accountId))
+            {
+                request.AddQueryParameter("account_id", accountId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public DuplicatedResponse TransactionsDuplicate(string customerId, IEnumerable<string> transactionIds)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Null customer id");
+            }
+
+            var enumerable = transactionIds as string[] ?? transactionIds.ToArray();
+
+            if (transactionIds == null || !enumerable.Any())
+            {
+                throw new InvalidArgumentException("Null or empty transaction id's list");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicate");
+
+            request.AddJsonBody(new
+            {
+                data = new
+                {
+                    customer_id = customerId,
+                    transaction_ids = enumerable
+                }
+            });
+
+            var apiResponse = _client.Put<SimpleResponse<DuplicatedResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public UnDuplicatedResponse TransactionsUnDuplicate(string customerId, IEnumerable<string> transactionIds)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Null customer id");
+            }
+
+            var enumerable = transactionIds as string[] ?? transactionIds.ToArray();
+
+            if (transactionIds == null || !enumerable.Any())
+            {
+                throw new InvalidArgumentException("Null or empty transaction id's list");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/unduplicate");
+
+            request.AddJsonBody(new
+            {
+                data = new
+                {
+                    customer_id = customerId,
+                    transaction_ids = enumerable
+                }
+            });
+
+            var apiResponse = _client.Put<SimpleResponse<UnDuplicatedResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public RemoveTransactionResponse TransactionRemove(string customerId, string accountId, int keepDays = 0)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Null customer id");
+            }
+
+            if (string.IsNullOrWhiteSpace(accountId))
+            {
+                throw new InvalidArgumentException("Null account id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Transactions.Value);
+
+            request.AddJsonBody(new
+            {
+                data = new
+                {
+                    customer_id = customerId,
+                    account_id = accountId,
+                    keep_days = keepDays
+                }
+            });
+
+            var apiResponse = _client.Delete<SimpleResponse<RemoveTransactionResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Response<IEnumerable<Consent>, Paging> ConsentsList(string connectionId = default,
+            string customerId = default, string fromId = default)
+        {
+            var request = new RestRequest(SaltEdgeEndpointsV5.Consents.Value);
+            if (!string.IsNullOrWhiteSpace(connectionId))
+            {
+                request.AddQueryParameter("connection_id", connectionId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(customerId))
+            {
+                request.AddQueryParameter("customer_id", customerId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(fromId))
+            {
+                request.AddQueryParameter("from_id", fromId, true);
+            }
+
+            var apiResponse = _client.Get<Response<IEnumerable<Consent>, Paging>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Consent ConsentShow(string id, string connectionId = default, string customerId = default)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                throw new InvalidArgumentException("Null consent id");
+            }
+
+            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Either connection id or customer id should not be null," +
+                                                   " please visit the documentation : https://docs.saltedge.com/account_information/v5/#consents-show");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Consents.Value}/{id}");
+
+            if (!string.IsNullOrWhiteSpace(connectionId))
+            {
+                request.AddQueryParameter("connection_id", connectionId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(customerId))
+            {
+                request.AddQueryParameter("customer_id", customerId, true);
+            }
+
+            var apiResponse = _client.Get<SimpleResponse<Consent>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Consent ConsentRevoke(string id, string connectionId = default, string customerId = default)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+            {
+                throw new InvalidArgumentException("Null consent id");
+            }
+
+            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Either connection id or customer id should not be null," +
+                                                   " please visit the documentation : https://docs.saltedge.com/account_information/v5/#consents-revoke");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Consents.Value}/{id}/revoke");
+
+            if (!string.IsNullOrWhiteSpace(connectionId))
+            {
+                request.AddQueryParameter("connection_id", connectionId, true);
+            }
+
+            if (!string.IsNullOrWhiteSpace(customerId))
+            {
+                request.AddQueryParameter("customer_id", customerId, true);
+            }
+
+            var apiResponse = _client.Put<SimpleResponse<Consent>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public IDictionary<string, IEnumerable<string>> CategoryList()
+        {
+            var apiResponse = _client.Get(new RestRequest(SaltEdgeEndpointsV5.Categories.Value));
+            if (apiResponse.IsSuccessful)
+            {
+                return ProcessCategories(apiResponse);
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public CategoryLearnResponse CategoryLearn(string customerId, IEnumerable<CategoryLearn> transactionsList)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new IdentifierInvalidException("Null customer id");
+            }
+
+            var categoryLearns = transactionsList as CategoryLearn[] ?? transactionsList.ToArray();
+            if (categoryLearns.Any(tLearn =>
+                string.IsNullOrWhiteSpace(tLearn.Id) || string.IsNullOrWhiteSpace(tLearn.CategoryCode)))
+            {
+                throw new InvalidArgumentException("Null transaction id or category code," +
+                                                   "please visit the documentation: https://docs.saltedge.com/account_information/v5/#categories-learn");
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/learn");
+
+            request.AddJsonBody(new
+            {
+                data = new
+                {
+                    customer_id = customerId,
+                    transactions = categoryLearns
+                }
+            });
+
+            var apiResponse = _client.Post<SimpleResponse<CategoryLearnResponse>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public IEnumerable<Currency> Currencies()
+        {
+            var apiResponse =
+                _client.Get<SimpleResponse<IEnumerable<Currency>>>(
+                    new RestRequest(SaltEdgeEndpointsV5.Currencies.Value));
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public IEnumerable<Asset> Assets()
+        {
+            var apiResponse =
+                _client.Get<SimpleResponse<IEnumerable<Asset>>>(
+                    new RestRequest(SaltEdgeEndpointsV5.Assets.Value));
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public IEnumerable<Rate> Rates(DateTime? date = null)
+        {
+            var request = new RestRequest(SaltEdgeEndpointsV5.Rates.Value);
+            if (date != null)
+            {
+                request.AddQueryParameter("date", date.ToString(Config.DateFormat), true);
+            }
+
+            var apiResponse =
+                _client.Get<SimpleResponse<IEnumerable<Rate>>>(request);
+
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public IEnumerable<Merchant> MerchantsList(IEnumerable<string> merchantIds)
+        {
+            var ids = merchantIds as string[] ?? merchantIds.ToArray();
+            if (merchantIds == null || !ids.Any())
+            {
+                throw new InvalidArgumentException("Merchant ids list is null or empty");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Merchants.Value);
+
+            request.AddJsonBody(new
+            {
+                data = ids
+            });
+
+            var apiResponse = _client.Post<SimpleResponse<IEnumerable<Merchant>>>(request);
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data;
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        public Merchant MerchantShow(string merchantId)
+        {
+            if (string.IsNullOrWhiteSpace(merchantId))
+            {
+                throw new InvalidArgumentException("Null merchant id");
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Merchants.Value);
+
+            request.AddJsonBody(new
+            {
+                data = new[] {merchantId}
+            });
+
+            var apiResponse = _client.Post<SimpleResponse<IEnumerable<Merchant>>>(request);
+            if (apiResponse.IsSuccessful)
+            {
+                return apiResponse.Data.Data.FirstOrDefault();
+            }
+
+            HandleError(apiResponse.Content);
+            return null;
+        }
+
+        private static IDictionary<string, IEnumerable<string>> ProcessCategories(IRestResponse result)
+        {
+            var categoryList = new Dictionary<string, IEnumerable<string>>();
+            var categories = JsonConvert.DeserializeObject<JObject>(result.Content);
+            foreach (var p in categories.Properties())
+            {
+                var prop = JsonConvert.DeserializeObject<JObject>(p.Value.ToString());
+                foreach (var x in prop.Properties())
+                {
+                    var cat = JsonConvert.DeserializeObject<JObject>(x.Value.ToString());
+                    foreach (var d in cat.Properties())
+                    {
+                        if (!categoryList.ContainsKey(d.Name))
+                        {
+                            categoryList.Add(d.Name,
+                                JsonConvert.DeserializeObject<IEnumerable<string>>(d.Value.ToString()));
+                        }
+                    }
+                }
+            }
+
+            return categoryList;
         }
 
         private static void HandleError(string content)
@@ -415,7 +1061,15 @@ namespace SaltEdgeNetCore.Client
 
         private IRestClient GetClient()
         {
-            _headers.Add("Content-Type", "application/json");
+            if (!_headers.ContainsKey(""))
+            {
+                _headers.Add("Content-Type", "application/json");
+            }
+
+            if (!_headers.ContainsKey(""))
+            {
+                _headers.Add("Accept", "application/json");
+            }
 
             var client = new RestClient(" https://www.saltedge.com/api/v5/");
             foreach (var (key, value) in _headers)

@@ -1,5 +1,6 @@
 using System;
 using Newtonsoft.Json;
+using SaltEdgeNetCore.Models.Extra;
 
 namespace SaltEdgeNetCore.Models.Transaction
 {
@@ -8,15 +9,12 @@ namespace SaltEdgeNetCore.Models.Transaction
         [JsonProperty("id")]
         public string Id { get; set; }
 
-        [JsonProperty("duplicated")]
-        public bool? Duplicated { get; set; }
-
         [JsonProperty("mode")]
         public string Mode { get; set; }
-
+        
         [JsonProperty("status")]
         public string Status { get; set; }
-
+        
         [JsonProperty("made_on")]
         public DateTime? MadeOn { get; set; }
 
@@ -32,8 +30,11 @@ namespace SaltEdgeNetCore.Models.Transaction
         [JsonProperty("category")]
         public string Category { get; set; }
 
+        [JsonProperty("duplicated")]
+        public bool? Duplicated { get; set; }
+
         [JsonProperty("extra")]
-        public Extra Extra { get; set; }
+        public TransactionExtra Extra { get; set; }
 
         [JsonProperty("account_id")]
         public string AccountId { get; set; }

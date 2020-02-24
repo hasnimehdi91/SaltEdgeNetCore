@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using Newtonsoft.Json;
 using SaltEdgeNetCore.Models.Transaction;
 
-namespace SaltEdgeNetCore.Models.Account
+namespace SaltEdgeNetCore.Models.Extra
 {
-    public class Extra
+    public class AccountExtra
     {
         [JsonProperty("account_name")]
         public string AccountName { get; set; }
@@ -17,10 +17,10 @@ namespace SaltEdgeNetCore.Models.Account
         public IEnumerable<string> Assets { get; set; }
         
         [JsonProperty("available_amount")]
-        public double? AvailableAmount { get; set; }
+        public decimal? AvailableAmount { get; set; }
 
         [JsonProperty("blocked_amount")]
-        public double? BlockedAmount { get; set; }
+        public decimal? BlockedAmount { get; set; }
         
         [JsonProperty("card_type")]
         public string CardType { get; set; }
@@ -32,10 +32,10 @@ namespace SaltEdgeNetCore.Models.Account
         public string ClientName { get; set; }
 
         [JsonProperty("closing_balance")]
-        public double? ClosingBalance { get; set; }
+        public decimal? ClosingBalance { get; set; }
         
         [JsonProperty("credit_limit")]
-        public double? CreditLimit { get; set; }
+        public decimal? CreditLimit { get; set; }
 
         [JsonProperty("current_date")]
         public DateTime? CurrentDate { get; set; }
@@ -50,10 +50,10 @@ namespace SaltEdgeNetCore.Models.Account
         public string Iban { get; set; }
         
         [JsonProperty("interest_rate")]
-        public double? InterestRate { get; set; }
+        public decimal? InterestRate { get; set; }
         
         [JsonProperty("next_payment_amount")]
-        public double? NextPaymentAmount { get; set; }
+        public decimal? NextPaymentAmount { get; set; }
         
         [JsonProperty("next_payment_date")]
         public string NextPaymentDate { get; set; }
@@ -62,7 +62,7 @@ namespace SaltEdgeNetCore.Models.Account
         public string OpenDate { get; set; }
 
         [JsonProperty("opening_balance")]
-        public double? OpeningBalance { get; set; }
+        public decimal? OpeningBalance { get; set; }
 
         [JsonProperty("partial")]
         public bool? Partial { get; set; }
@@ -80,7 +80,7 @@ namespace SaltEdgeNetCore.Models.Account
         public string Swift { get; set; }
 
         [JsonProperty("total_payment_amount")]
-        public double? TotalPaymentAmount { get; set; }
+        public decimal? TotalPaymentAmount { get; set; }
         
         [JsonProperty("transactions_count")]
         public Count TransactionsCount { get; set; }
@@ -89,22 +89,22 @@ namespace SaltEdgeNetCore.Models.Account
         public string PaymentType { get; set; }
 
         [JsonProperty("cashback_amount")]
-        public double? CashBackAmount { get; set; }
+        public decimal? CashBackAmount { get; set; }
 
         [JsonProperty("unit_price")]
-        public double? UnitPrice { get; set; }
+        public decimal? UnitPrice { get; set; }
 
         [JsonProperty("units")]
-        public double? Units { get; set; }
+        public decimal? Units { get; set; }
 
         [JsonProperty("indicative_unit_price")]
-        public double? IndicativeUnitPrice { get; set; }
+        public decimal? IndicativeUnitPrice { get; set; }
 
         [JsonProperty("interest_income")]
-        public double? InterestIncome { get; set; }
+        public decimal? InterestIncome { get; set; }
 
         [JsonProperty("interest_amount")]
-        public double? InterestAmount { get; set; }
+        public decimal? InterestAmount { get; set; }
 
         [JsonProperty("fund_holdings")]
         public dynamic FundHoldings { get; set; }
@@ -119,40 +119,39 @@ namespace SaltEdgeNetCore.Models.Account
         public string LifeAssuredName { get; set; }
 
         [JsonProperty("premium_amount")]
-        public double? PremiumAmount { get; set; }
+        public decimal? PremiumAmount { get; set; }
 
         [JsonProperty("financial_consultant")]
         public string FinancialConsultant { get; set; }
 
         [JsonProperty("total_reversionary_bonus")]
-        public double? TotalReversionaryBonus { get; set; }
+        public decimal? TotalReversionaryBonus { get; set; }
 
         [JsonProperty("gross_surrender")]
-        public double? GrossSurrender { get; set; }
+        public decimal? GrossSurrender { get; set; }
 
         [JsonProperty("guaranteed_gross_surrender")]
-        public double? GuaranteedGrossSurrender { get; set; }
+        public decimal? GuaranteedGrossSurrender { get; set; }
 
         [JsonProperty("reversionary_bonus_cash_value")]
-        public double? ReversionaryBonusCashValue { get; set; }
+        public decimal? ReversionaryBonusCashValue { get; set; }
 
         [JsonProperty("owned_policy_amount")]
-        public double? OwnedPolicyAmount { get; set; }
+        public decimal? OwnedPolicyAmount { get; set; }
 
         [JsonProperty("policy_loan_limit")]
-        public double? PolicyLoanLimit { get; set; }
+        public decimal? PolicyLoanLimit { get; set; }
 
         [JsonProperty("policy_converted_to_paid_up")]
-        public double? PolicyConvertedToPaidUp { get; set; }
+        public decimal? PolicyConvertedToPaidUp { get; set; }
 
         [JsonProperty("paid_up_conversion_reversionary_bonus")]
-        public double? PaidUpConversionReversionaryBonus { get; set; }
+        public decimal? PaidUpConversionReversionaryBonus { get; set; }
 
         [JsonProperty("policy_components")]
-        public dynamic PolicyComponents { get; set; }
+        public object PolicyComponents { get; set; }
         
         [JsonProperty("last_posted_transaction_id")]
         public string LastPostedTransactionId { get; set; }
-        
     }
 }

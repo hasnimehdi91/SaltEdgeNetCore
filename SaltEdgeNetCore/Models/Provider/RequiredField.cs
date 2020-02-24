@@ -18,12 +18,12 @@ namespace SaltEdgeNetCore.Models.Provider
         public string Nature { get; set; }
 
         [JsonProperty("optional")]
-        public bool Optional { get; set; }
+        public bool? Optional { get; set; }
 
         [JsonProperty("extra")]
-        public Extra Extra { get; set; }
+        public Extra.AccountExtra AccountExtra { get; set; }
 
         [JsonProperty("position")]
-        public int Position { get; set; }
+        public int? Position { get; set; }
     }
 }

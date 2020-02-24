@@ -2,10 +2,13 @@ using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 
-namespace SaltEdgeNetCore.Models.Transaction
+namespace SaltEdgeNetCore.Models.Extra
 {
-    public class Extra
+    public class TransactionExtra
     {
+        [JsonProperty("account_balance_snapshot")]
+        public decimal? AccountBalanceSnapshot { get; set; }
+        
         [JsonProperty("account_number")]
         public string AccountNumber { get; set; }
         
@@ -54,6 +57,9 @@ namespace SaltEdgeNetCore.Models.Transaction
         [JsonProperty("opening_balance")]
         public decimal? OpeningBalance { get; set; }
 
+        [JsonProperty("installment_debt_amount")]
+        public decimal? InstallmentDebtAmount { get; set; }
+
         [JsonProperty("original_amount")]
         public decimal? OriginalAmount { get; set; }
 
@@ -85,7 +91,7 @@ namespace SaltEdgeNetCore.Models.Transaction
         public DateTime? PostingDate { get; set; }
 
         [JsonProperty("posting_time")]
-        public string PostingTime { get; set; }
+        public TimeSpan? PostingTime { get; set; }
 
         [JsonProperty("record_number")]
         public string RecordNumber { get; set; }
@@ -97,7 +103,7 @@ namespace SaltEdgeNetCore.Models.Transaction
         public IEnumerable<string> Tags { get; set; }
 
         [JsonProperty("time")]
-        public string Time { get; set; }
+        public TimeSpan? Time { get; set; }
 
         [JsonProperty("transfer_account_name")]
         public string TransferAccountName { get; set; }
@@ -113,8 +119,5 @@ namespace SaltEdgeNetCore.Models.Transaction
 
         [JsonProperty("variable_code")]
         public string VariableCode { get; set; }
-
-        [JsonProperty("account_balance_snapshot")]
-        public decimal? AccountBalanceSnapshot { get; set; }
     }
 }

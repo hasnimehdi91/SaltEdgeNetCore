@@ -1,5 +1,5 @@
 using Newtonsoft.Json;
-using SaltEdgeNetCore.Models.Account;
+using SaltEdgeNetCore.Models.Extra;
 
 namespace SaltEdgeNetCore.Models.Provider
 {
@@ -21,9 +21,9 @@ namespace SaltEdgeNetCore.Models.Provider
         public bool Optional { get; set; }
 
         [JsonProperty("extra")]
-        public Extra Extra { get; set; }
+        public AccountExtra AccountExtra { get; set; }
 
         [JsonProperty("position")]
-        public int Position { get; set; }
+        public int? Position { get; set; }
     }
 }

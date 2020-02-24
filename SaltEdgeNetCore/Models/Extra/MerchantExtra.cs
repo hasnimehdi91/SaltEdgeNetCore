@@ -1,0 +1,16 @@
+using Newtonsoft.Json;
+
+namespace SaltEdgeNetCore.Models.Extra
+{
+    public class MerchantExtra
+    {
+        [JsonProperty("building_number")]
+        public string BuildingNumber { get; set; }
+
+        [JsonProperty("shop_number")]
+        public string ShopNumber { get; set; }
+
+        [JsonProperty("type_of_shop")]
+        public string TypeOfShop { get; set; }
+    }
+}

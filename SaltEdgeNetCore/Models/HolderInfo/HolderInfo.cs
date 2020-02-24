@@ -16,5 +16,11 @@ namespace SaltEdgeNetCore.Models.HolderInfo
 
         [JsonProperty("addresses")]
         public IEnumerable<Address> Addresses { get; set; }
+
+        [JsonProperty("ssn")]
+        public string Ssn { get; set; }
+
+         [JsonProperty("cpf")]
+        public string Cpf { get; set; }
     }
 }
