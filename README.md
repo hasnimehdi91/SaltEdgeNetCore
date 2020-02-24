@@ -9,7 +9,7 @@ This is released under an Apache 2.0 license. See the file LICENSE.txt for more 
 ## Documentation
 The API corresponds to the [Salt Edge Documentation](https://docs.saltedge.com/)
 
-###Usage
+### Usage
 1- In the ConfigureServices method of Startup.cs, register the SaltEdgeNetCore..
 ```csharp
 public void ConfigureServices(IServiceCollection services)
