@@ -2,6 +2,8 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SaltEdgeNetCore", "SaltEdgeNetCore\SaltEdgeNetCore.csproj", "{E1375A56-FFE4-4C20-AC8B-0BBCCC1F3945}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestApp", "TestApp\TestApp.csproj", "{BA08EF21-EB68-4723-80D6-BBAE4D05DE36}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -12,5 +14,9 @@ Global
 		{E1375A56-FFE4-4C20-AC8B-0BBCCC1F3945}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E1375A56-FFE4-4C20-AC8B-0BBCCC1F3945}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E1375A56-FFE4-4C20-AC8B-0BBCCC1F3945}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BA08EF21-EB68-4723-80D6-BBAE4D05DE36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BA08EF21-EB68-4723-80D6-BBAE4D05DE36}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BA08EF21-EB68-4723-80D6-BBAE4D05DE36}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BA08EF21-EB68-4723-80D6-BBAE4D05DE36}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
