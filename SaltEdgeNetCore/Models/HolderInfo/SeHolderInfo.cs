@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.HolderInfo
 {
-    public class HolderInfo
+    public class SeHolderInfo
     {
         [JsonProperty("names")]
         public IEnumerable<string> Names { get; set; }
@@ -15,7 +15,7 @@ namespace SaltEdgeNetCore.Models.HolderInfo
         public IEnumerable<string> PhoneNumbers { get; set; }
 
         [JsonProperty("addresses")]
-        public IEnumerable<Address> Addresses { get; set; }
+        public IEnumerable<SeAddress> Addresses { get; set; }
 
         [JsonProperty("ssn")]
         public string Ssn { get; set; }

@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Consents
 {
-    public class Consent
+    public class SeConsent
     {
         [JsonProperty("id")]
         public string Id { get; set; }

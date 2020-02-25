@@ -1,8 +1,8 @@
 using Newtonsoft.Json;
 
-namespace SaltEdgeNetCore.Models.Currencies
+namespace SaltEdgeNetCore.Models.Assets
 {
-    public class Currency
+    public class SeAsset
     {
         [JsonProperty("code")]
         public string Code { get; set; }

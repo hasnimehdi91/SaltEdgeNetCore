@@ -48,10 +48,10 @@ namespace SaltEdgeNetCore.Client
             return this;
         }
 
-        public IEnumerable<Country> ListCountries()
+        public IEnumerable<SeCountry> ListCountries()
         {
             var apiResponse = _client
-                .Get<SimpleResponse<IEnumerable<Country>>>(new RestRequest(SaltEdgeEndpointsV5.CountryList.Value));
+                .Get<SimpleResponse<IEnumerable<SeCountry>>>(new RestRequest(SaltEdgeEndpointsV5.CountryList.Value));
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data.Data;
@@ -61,10 +61,10 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Provider ProviderShow(string providerCode)
+        public SeProvider ProviderShow(string providerCode)
         {
             var apiResponse = _client
-                .Get<SimpleResponse<Provider>>(
+                .Get<SimpleResponse<SeProvider>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}"));
             if (apiResponse.IsSuccessful)
             {
@@ -75,7 +75,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Provider>, Paging> ProvidersList(DateTime? fromDate = null, string fromId = default,
+        public Response<IEnumerable<SeProvider>, SePaging> ProvidersList(DateTime? fromDate = null, string fromId = default,
             string countryCode = default, string mode = default,
             bool includeFakeProviders = false, bool includeProviderFields = false, string providerKeyOwner = default)
         {
@@ -126,7 +126,7 @@ namespace SaltEdgeNetCore.Client
             }
 
 
-            var apiResponse = _client.Get<Response<IEnumerable<Provider>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SeProvider>, SePaging>>(request);
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data;
@@ -136,7 +136,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Customer CreateCustomer(string customerId)
+        public SeCustomer CreateCustomer(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
@@ -151,7 +151,7 @@ namespace SaltEdgeNetCore.Client
                     identifier = customerId
                 }
             });
-            var apiResponse = _client.Post<SimpleResponse<Customer>>(request);
+            var apiResponse = _client.Post<SimpleResponse<SeCustomer>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -162,7 +162,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Customer CustomerShow(string customerId)
+        public SeCustomer CustomerShow(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
@@ -170,7 +170,7 @@ namespace SaltEdgeNetCore.Client
             }
 
             var apiResponse =
-                _client.Get<SimpleResponse<Customer>>(
+                _client.Get<SimpleResponse<SeCustomer>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
             if (apiResponse.IsSuccessful)
             {
@@ -181,7 +181,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Customer>, Paging> CustomersList(string fromId = default, string nextId = default)
+        public Response<IEnumerable<SeCustomer>, SePaging> CustomersList(string fromId = default, string nextId = default)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
 
@@ -196,7 +196,7 @@ namespace SaltEdgeNetCore.Client
             }
 
             var apiResponse =
-                _client.Get<Response<IEnumerable<Customer>, Paging>>(
+                _client.Get<Response<IEnumerable<SeCustomer>, SePaging>>(
                     request);
             if (apiResponse.IsSuccessful)
             {
@@ -409,7 +409,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Connection>, Paging> ConnectionsList(string customerId, string fromId = default)
+        public Response<IEnumerable<SeConnection>, SePaging> ConnectionsList(string customerId, string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
@@ -425,7 +425,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("from_id", fromId, true);
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<Connection>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SeConnection>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -436,7 +436,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Connection ConnectionShow(string connectionId)
+        public SeConnection ConnectionShow(string connectionId)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
             {
@@ -444,7 +444,7 @@ namespace SaltEdgeNetCore.Client
             }
 
             var apiResponse =
-                _client.Get<SimpleResponse<Connection>>(
+                _client.Get<SimpleResponse<SeConnection>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
             if (apiResponse.IsSuccessful)
             {
@@ -474,7 +474,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public HolderInfo HolderInfoShow(string connectionId)
+        public SeHolderInfo HolderInfoShow(string connectionId)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
             {
@@ -484,7 +484,7 @@ namespace SaltEdgeNetCore.Client
             var request = new RestRequest(SaltEdgeEndpointsV5.HolderInfo.Value);
             request.AddQueryParameter("connection_id", connectionId, true);
 
-            var apiResponse = _client.Get<SimpleResponse<HolderInfo>>(request);
+            var apiResponse = _client.Get<SimpleResponse<SeHolderInfo>>(request);
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data.Data;
@@ -494,7 +494,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Attempt>, Paging> AttemptsList(string connectionId)
+        public Response<IEnumerable<SeAttempt>, SePaging> AttemptsList(string connectionId)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
             {
@@ -504,7 +504,7 @@ namespace SaltEdgeNetCore.Client
             var request = new RestRequest(SaltEdgeEndpointsV5.Attempts.Value);
             request.AddQueryParameter("connection_id", connectionId, true);
 
-            var apiResponse = _client.Get<Response<IEnumerable<Attempt>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SeAttempt>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -515,7 +515,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Attempt AttemptShow(string connectionId, string attemptId)
+        public SeAttempt AttemptShow(string connectionId, string attemptId)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
             {
@@ -529,7 +529,7 @@ namespace SaltEdgeNetCore.Client
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}");
             request.AddQueryParameter("connection_id", connectionId, true);
-            var apiResponse = _client.Get<SimpleResponse<Attempt>>(request);
+            var apiResponse = _client.Get<SimpleResponse<SeAttempt>>(request);
             if (apiResponse.IsSuccessful)
             {
                 return apiResponse.Data.Data;
@@ -539,7 +539,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Account>, Paging> AccountList(string connectionId, string customerId = default,
+        public Response<IEnumerable<SeAccount>, SePaging> AccountList(string connectionId, string customerId = default,
             string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(customerId))
@@ -564,7 +564,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("from_id", fromId, true);
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<Account>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SeAccount>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -576,7 +576,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsList(string connectionId,
+        public Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsList(string connectionId,
             string accountId = default, string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
@@ -597,7 +597,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("from_id", fromId, true);
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -608,7 +608,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsDuplicatedList(string connectionId,
+        public Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsDuplicatedList(string connectionId,
             string accountId = default, string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
@@ -629,7 +629,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("from_id", fromId, true);
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -640,7 +640,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsPendingList(string connectionId,
+        public Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsPendingList(string connectionId,
             string accountId = default, string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
@@ -661,7 +661,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("from_id", fromId, true);
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -779,7 +779,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<Consent>, Paging> ConsentsList(string connectionId = default,
+        public Response<IEnumerable<SeConsent>, SePaging> ConsentsList(string connectionId = default,
             string customerId = default, string fromId = default)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Consents.Value);
@@ -798,7 +798,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("from_id", fromId, true);
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<Consent>, Paging>>(request);
+            var apiResponse = _client.Get<Response<IEnumerable<SeConsent>, SePaging>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -809,7 +809,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Consent ConsentShow(string id, string connectionId = default, string customerId = default)
+        public SeConsent ConsentShow(string id, string connectionId = default, string customerId = default)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -834,7 +834,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("customer_id", customerId, true);
             }
 
-            var apiResponse = _client.Get<SimpleResponse<Consent>>(request);
+            var apiResponse = _client.Get<SimpleResponse<SeConsent>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -845,7 +845,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Consent ConsentRevoke(string id, string connectionId = default, string customerId = default)
+        public SeConsent ConsentRevoke(string id, string connectionId = default, string customerId = default)
         {
             if (string.IsNullOrWhiteSpace(id))
             {
@@ -870,7 +870,7 @@ namespace SaltEdgeNetCore.Client
                 request.AddQueryParameter("customer_id", customerId, true);
             }
 
-            var apiResponse = _client.Put<SimpleResponse<Consent>>(request);
+            var apiResponse = _client.Put<SimpleResponse<SeConsent>>(request);
 
             if (apiResponse.IsSuccessful)
             {
@@ -893,14 +893,14 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public CategoryLearnResponse CategoryLearn(string customerId, IEnumerable<CategoryLearn> transactionsList)
+        public CategoryLearnResponse CategoryLearn(string customerId, IEnumerable<SeCategoryLearn> transactionsList)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new IdentifierInvalidException("Null customer id");
             }
 
-            var categoryLearns = transactionsList as CategoryLearn[] ?? transactionsList.ToArray();
+            var categoryLearns = transactionsList as SeCategoryLearn[] ?? transactionsList.ToArray();
             if (categoryLearns.Any(tLearn =>
                 string.IsNullOrWhiteSpace(tLearn.Id) || string.IsNullOrWhiteSpace(tLearn.CategoryCode)))
             {
@@ -930,10 +930,10 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public IEnumerable<Currency> Currencies()
+        public IEnumerable<SeCurrency> Currencies()
         {
             var apiResponse =
-                _client.Get<SimpleResponse<IEnumerable<Currency>>>(
+                _client.Get<SimpleResponse<IEnumerable<SeCurrency>>>(
                     new RestRequest(SaltEdgeEndpointsV5.Currencies.Value));
 
             if (apiResponse.IsSuccessful)
@@ -945,10 +945,10 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public IEnumerable<Asset> Assets()
+        public IEnumerable<SeAsset> Assets()
         {
             var apiResponse =
-                _client.Get<SimpleResponse<IEnumerable<Asset>>>(
+                _client.Get<SimpleResponse<IEnumerable<SeAsset>>>(
                     new RestRequest(SaltEdgeEndpointsV5.Assets.Value));
 
             if (apiResponse.IsSuccessful)
@@ -960,7 +960,7 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public IEnumerable<Rate> Rates(DateTime? date = null)
+        public IEnumerable<SeRate> Rates(DateTime? date = null)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Rates.Value);
             if (date != null)
@@ -969,7 +969,7 @@ namespace SaltEdgeNetCore.Client
             }
 
             var apiResponse =
-                _client.Get<SimpleResponse<IEnumerable<Rate>>>(request);
+                _client.Get<SimpleResponse<IEnumerable<SeRate>>>(request);
 
             if (apiResponse.IsSuccessful)
             {

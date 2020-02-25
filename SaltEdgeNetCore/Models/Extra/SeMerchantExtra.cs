@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Extra
 {
-    public class MerchantExtra
+    public class SeMerchantExtra
     {
         [JsonProperty("building_number")]
         public string BuildingNumber { get; set; }

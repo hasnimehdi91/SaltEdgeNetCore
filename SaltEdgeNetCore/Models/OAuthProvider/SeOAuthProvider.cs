@@ -4,13 +4,13 @@ using SaltEdgeNetCore.Models.Consents;
 
 namespace SaltEdgeNetCore.Models.OAuthProvider
 {
-    public class OAuthProvider
+    public class SeOAuthProvider
     {
         [JsonProperty("attempt")]
-        public Attempt Attempt { get; set; }
+        public SeAttempt Attempt { get; set; }
         
         [JsonProperty("consent")]
-        public Consent Consent { get; set; }
+        public SeConsent Consent { get; set; }
         
         [JsonProperty("daily_refresh")]
         public bool? DailyRefresh { get; set; }

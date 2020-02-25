@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Customer
 {
-    public class Customer
+    public class SeCustomer
     {
         [JsonProperty("id")]
         public string Id { get; set; }

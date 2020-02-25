@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Merchant
 {
-    public class Name
+    public class SeMerchantName
     {
         [JsonProperty("mode")]
         public string Mode { get; set; }

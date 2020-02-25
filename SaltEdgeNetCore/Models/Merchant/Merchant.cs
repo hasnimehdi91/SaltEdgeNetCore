@@ -9,12 +9,12 @@ namespace SaltEdgeNetCore.Models.Merchant
         public string Id { get; set; }
 
         [JsonProperty("names")]
-        public IEnumerable<Name> Names { get; set; }
+        public IEnumerable<SeMerchantName> Names { get; set; }
 
         [JsonProperty("contact")]
-        public IEnumerable<Contact> Contact { get; set; }
+        public IEnumerable<SeMerchantContact> Contact { get; set; }
 
         [JsonProperty("address")]
-        public Address Address { get; set; }
+        public SeMerchantAddress Address { get; set; }
     }
 }

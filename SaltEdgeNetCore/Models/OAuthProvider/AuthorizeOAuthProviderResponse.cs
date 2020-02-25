@@ -28,7 +28,7 @@ namespace SaltEdgeNetCore.Models.OAuthProvider
         public string LastConsentId { get; set; }
 
         [JsonProperty("last_attempt")]
-        public Attempt LastAttempt { get; set; }
+        public SeAttempt LastAttempt { get; set; }
 
         [JsonProperty("last_success_at")]
         public DateTime? LastSuccessAt { get; set; }

@@ -34,7 +34,7 @@ namespace SaltEdgeNetCore.Models.Transaction
         public bool? Duplicated { get; set; }
 
         [JsonProperty("extra")]
-        public TransactionExtra Extra { get; set; }
+        public SeTransactionExtra Extra { get; set; }
 
         [JsonProperty("account_id")]
         public string AccountId { get; set; }

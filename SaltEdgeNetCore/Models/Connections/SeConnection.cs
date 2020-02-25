@@ -4,7 +4,7 @@ using SaltEdgeNetCore.Models.Attempts;
 
 namespace SaltEdgeNetCore.Models.Connections
 {
-    public class Connection
+    public class SeConnection
     {
         [JsonProperty("country_code")]
         public string CountryCode { get; set; }
@@ -28,7 +28,7 @@ namespace SaltEdgeNetCore.Models.Connections
         public string LastConsentId { get; set; }
 
         [JsonProperty("last_attempt")]
-        public Attempt LastAttempt { get; set; }
+        public SeAttempt LastAttempt { get; set; }
 
         [JsonProperty("last_success_at")]
         public DateTime? LastSuccessAt { get; set; }

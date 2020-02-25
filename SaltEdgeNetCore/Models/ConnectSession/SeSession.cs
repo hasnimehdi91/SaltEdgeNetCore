@@ -4,10 +4,10 @@ using SaltEdgeNetCore.Models.Attempts;
 
 namespace SaltEdgeNetCore.Models.ConnectSession
 {
-    public class Session
+    public class SeSession
     {
         [JsonProperty("attempt")]
-        public Attempt Attempt { get; set; }
+        public SeAttempt Attempt { get; set; }
 
         [JsonProperty("daily_refresh")]
         public bool? DailyRefresh { get; set; }

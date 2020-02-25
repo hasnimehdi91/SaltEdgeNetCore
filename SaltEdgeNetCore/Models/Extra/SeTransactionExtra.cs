@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Extra
 {
-    public class TransactionExtra
+    public class SeTransactionExtra
     {
         [JsonProperty("account_balance_snapshot")]
         public decimal? AccountBalanceSnapshot { get; set; }

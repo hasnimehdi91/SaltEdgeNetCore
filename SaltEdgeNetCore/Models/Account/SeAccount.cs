@@ -3,7 +3,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Account
 {
-    public class Account
+    public class SeAccount
     {
         [JsonProperty("id")]
         public string Id { get; set; }
@@ -21,7 +21,7 @@ namespace SaltEdgeNetCore.Models.Account
         public string CurrencyCode { get; set; }
 
         [JsonProperty("extra")]
-        public Extra.AccountExtra AccountExtra { get; set; }
+        public Extra.SeAccountExtra AccountExtra { get; set; }
         
         [JsonProperty("connection_id")]
         public string ConnectionId { get; set; }

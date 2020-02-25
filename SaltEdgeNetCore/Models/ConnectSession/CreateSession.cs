@@ -4,13 +4,13 @@ using SaltEdgeNetCore.Models.Consents;
 
 namespace SaltEdgeNetCore.Models.ConnectSession
 {
-    public class CreateSession: Session
+    public class CreateSession: SeSession
     {
         [JsonProperty("customer_id")]
         public string CustomerId { get; set; }
         
         [JsonProperty("consent")]
-        public Consent Consent { get; set; }
+        public SeConsent Consent { get; set; }
 
         [JsonProperty("allowed_countries")]
         public IEnumerable<string> AllowedCountries { get; set; }

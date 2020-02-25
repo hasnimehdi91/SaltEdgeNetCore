@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.HolderInfo
 {
-    public class Address
+    public class SeAddress
     {
         [JsonProperty("city")]
         public string City { get; set; }

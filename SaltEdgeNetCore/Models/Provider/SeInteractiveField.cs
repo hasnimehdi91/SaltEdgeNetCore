@@ -3,7 +3,7 @@ using SaltEdgeNetCore.Models.Extra;
 
 namespace SaltEdgeNetCore.Models.Provider
 {
-    public class InteractiveField
+    public class SeInteractiveField
     {
         [JsonProperty("name")]
         public string Name { get; set; }
@@ -21,7 +21,7 @@ namespace SaltEdgeNetCore.Models.Provider
         public bool Optional { get; set; }
 
         [JsonProperty("extra")]
-        public AccountExtra AccountExtra { get; set; }
+        public SeAccountExtra AccountExtra { get; set; }
 
         [JsonProperty("position")]
         public int? Position { get; set; }

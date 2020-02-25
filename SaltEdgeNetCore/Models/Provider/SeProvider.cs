@@ -5,7 +5,7 @@ using SaltEdgeNetCore.Models.Extra;
 
 namespace SaltEdgeNetCore.Models.Provider
 {
-    public class Provider
+    public class SeProvider
     {
         [JsonProperty("id")]
         public string Id { get; set; }
@@ -83,10 +83,10 @@ namespace SaltEdgeNetCore.Models.Provider
         public IEnumerable<string> SupportedFetchScopes { get; set; }
         
         [JsonProperty("supported_account_extra_fields")]
-        public IEnumerable<AccountExtra> SupportedAccountExtraFields { get; set; }
+        public IEnumerable<SeAccountExtra> SupportedAccountExtraFields { get; set; }
 
         [JsonProperty("supported_transaction_extra_fields")]
-        public IEnumerable<TransactionExtra> SupportedTransactionExtraFields { get; set; }
+        public IEnumerable<SeTransactionExtra> SupportedTransactionExtraFields { get; set; }
 
         [JsonProperty("supported_account_natures")]
         public IEnumerable<string> SupportedAccountNatures { get; set; }
@@ -98,10 +98,10 @@ namespace SaltEdgeNetCore.Models.Provider
         public IEnumerable<object> PaymentTemplates { get; set; }
 
         [JsonProperty("required_fields")]
-        public IEnumerable<RequiredField> RequiredFields { get; set; }
+        public IEnumerable<SeRequiredField> RequiredFields { get; set; }
 
         [JsonProperty("interactive_fields")]
-        public IEnumerable<InteractiveField> InteractiveFields { get; set; }
+        public IEnumerable<SeInteractiveField> InteractiveFields { get; set; }
 
         [JsonProperty("forum_url")]
         public string ForumUrl { get; set; }

@@ -3,7 +3,7 @@ using SaltEdgeNetCore.Models.Account;
 
 namespace SaltEdgeNetCore.Models.Provider
 {
-    public class RequiredField
+    public class SeRequiredField
     {
         [JsonProperty("name")]
         public string Name { get; set; }
@@ -21,7 +21,7 @@ namespace SaltEdgeNetCore.Models.Provider
         public bool? Optional { get; set; }
 
         [JsonProperty("extra")]
-        public Extra.AccountExtra AccountExtra { get; set; }
+        public Extra.SeAccountExtra AccountExtra { get; set; }
 
         [JsonProperty("position")]
         public int? Position { get; set; }

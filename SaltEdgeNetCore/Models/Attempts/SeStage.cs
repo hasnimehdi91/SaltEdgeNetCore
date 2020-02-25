@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Attempts
 {
-    public class Stage
+    public class SeStage
     {
         [JsonProperty("created_at")]
         public DateTime? CreatedAt { get; set; }

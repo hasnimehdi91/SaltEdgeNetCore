@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Rates
 {
-    public class Rate
+    public class SeRate
     {
         [JsonProperty("currency_code")]
         public string CurrencyCode { get; set; }

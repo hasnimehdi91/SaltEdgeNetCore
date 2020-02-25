@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.OAuthProvider
 {
-    public class CreateOAuthProvider: OAuthProvider
+    public class CreateOAuthProvider: SeOAuthProvider
     {
         [JsonProperty("customer_id")]
         public string CustomerId { get; set; }

@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Merchant
 {
-    public class Coordinates
+    public class SeMerchantCoordinates
     {
         [JsonProperty("latitude")]
         public string Latitude { get; set; }

@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Responses
 {
-    public class Paging
+    public class SePaging
     {
         [JsonProperty("next_id")]
         public object NextId { get; set; }

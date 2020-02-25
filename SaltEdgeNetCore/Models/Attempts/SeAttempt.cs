@@ -4,7 +4,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Attempts
 {
-    public class Attempt
+    public class SeAttempt
     {
         [JsonProperty("api_mode")]
         public string ApiMode { get; set; }
@@ -91,9 +91,9 @@ namespace SaltEdgeNetCore.Models.Attempts
         public IEnumerable<string> IncludeNatures { get; set; }
 
         [JsonProperty("last_stage")]
-        public Stage Stage { get; set; }
+        public SeStage Stage { get; set; }
 
         [JsonProperty("stages")]
-        public IEnumerable<Stage> Type { get; set; }
+        public IEnumerable<SeStage> Type { get; set; }
     }
 }

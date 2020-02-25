@@ -3,7 +3,7 @@ using SaltEdgeNetCore.Models.Extra;
 
 namespace SaltEdgeNetCore.Models.Merchant
 {
-    public class Address
+    public class SeMerchantAddress
     {
         [JsonProperty("country_code")]
         public string CountryCode { get; set; }
@@ -24,9 +24,9 @@ namespace SaltEdgeNetCore.Models.Merchant
         public string PostCode { get; set; }
 
         [JsonProperty("coordinates")]
-        public Coordinates Coordinates { get; set; }
+        public SeMerchantCoordinates Coordinates { get; set; }
 
         [JsonProperty("extra")]
-        public MerchantExtra Extra { get; set; }
+        public SeMerchantExtra Extra { get; set; }
     }
 }

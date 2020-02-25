@@ -36,7 +36,7 @@ namespace SaltEdgeNetCore.Client
         /// “Fake”, encoded as XF
         /// </summary>
         /// <returns>Returns a list of countries supported by Salt Edge API.</returns>
-        IEnumerable<Country> ListCountries();
+        IEnumerable<SeCountry> ListCountries();
 
         /// <summary>
         /// Provider show allows you to inspect the single provider in order to give your users a proper
@@ -44,7 +44,7 @@ namespace SaltEdgeNetCore.Client
         /// </summary>
         /// <param name="providerCode"></param>
         /// <returns>Provider instance</returns>
-        Provider ProviderShow(string providerCode);
+        SeProvider ProviderShow(string providerCode);
 
         /// <summary>
         /// Returns all the providers we operate with. If a provider becomes disabled, it is not included in the list.
@@ -61,7 +61,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="providerKeyOwner">filtering providers by key owner, possible values are: client, saltedge. When value is set as client,
         /// only providers with client-set keys will be returned.</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<Provider>, Paging> ProvidersList(DateTime? fromDate = null, string fromId = default,
+        Response<IEnumerable<SeProvider>, SePaging> ProvidersList(DateTime? fromDate = null, string fromId = default,
             string countryCode = default,
             string mode = default,
             bool includeFakeProviders = false,
@@ -73,14 +73,14 @@ namespace SaltEdgeNetCore.Client
         /// </summary>
         /// <param name="customerId">a unique identifier of the new customer</param>
         /// <returns>Customer instance</returns>
-        Customer CreateCustomer(string customerId);
+        SeCustomer CreateCustomer(string customerId);
 
         /// <summary>
         /// Get a customer
         /// </summary>
         /// <param name="customerId">the id of the customer</param>
         /// <returns>Customer instance</returns>
-        Customer CustomerShow(string customerId);
+        SeCustomer CustomerShow(string customerId);
 
         /// <summary>
         /// List all of your app’s customers.
@@ -88,7 +88,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="fromId"> Starting from id</param>
         /// <param name="nextId"> Next id fetch</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<Customer>, Paging> CustomersList(string fromId = default, string nextId = default);
+        Response<IEnumerable<SeCustomer>, SePaging> CustomersList(string fromId = default, string nextId = default);
 
         /// <summary>
         /// Remove a customer
@@ -159,14 +159,14 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">The id of the customer</param>
         /// <param name="fromId">Fetch from id</param>
         /// <returns></returns>
-        Response<IEnumerable<Connection>, Paging> ConnectionsList(string customerId, string fromId = default);
+        Response<IEnumerable<SeConnection>, SePaging> ConnectionsList(string customerId, string fromId = default);
 
         /// <summary>
         /// Get a connection
         /// </summary>
         /// <param name="connectionId">The id of the connection</param>
         /// <returns>Connection instance</returns>
-        Connection ConnectionShow(string connectionId);
+        SeConnection ConnectionShow(string connectionId);
 
         /// <summary>
         /// Removes a connection from our system and revokes the consent.
@@ -180,14 +180,14 @@ namespace SaltEdgeNetCore.Client
         /// </summary>
         /// <param name="connectionId">The id of the connection</param>
         /// <returns>HolderInfo instance</returns>
-        HolderInfo HolderInfoShow(string connectionId);
+        SeHolderInfo HolderInfoShow(string connectionId);
 
         /// <summary>
         ///  List of all attempts for a certain connection.
         /// </summary>
         /// <param name="connectionId">The id of the connection whose attempts are to be fetched</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<Attempt>, Paging> AttemptsList(string connectionId);
+        Response<IEnumerable<SeAttempt>, SePaging> AttemptsList(string connectionId);
 
         /// <summary>
         /// Show attempt for a certain connection
@@ -195,7 +195,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="connectionId">The id of the connection whose attempt is to be fetched</param>
         /// <param name="attemptId">The attempt id</param>
         /// <returns>Attempt instance</returns>
-        Attempt AttemptShow(string connectionId, string attemptId);
+        SeAttempt AttemptShow(string connectionId, string attemptId);
 
 
         /// <summary>
@@ -208,7 +208,7 @@ namespace SaltEdgeNetCore.Client
         /// </param>
         /// <param name="fromId">The id of the account which the list starts with</param>
         /// <returns></returns>
-        Response<IEnumerable<Account>, Paging> AccountList(string connectionId, string customerId = default,
+        Response<IEnumerable<SeAccount>, SePaging> AccountList(string connectionId, string customerId = default,
             string fromId = default);
 
         /// <summary>
@@ -218,7 +218,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsList(string connectionId, string accountId = default,
+        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsList(string connectionId, string accountId = default,
             string fromId = default);
 
         /// <summary>
@@ -228,7 +228,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsDuplicatedList(string connectionId,
+        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsDuplicatedList(string connectionId,
             string accountId = default,
             string fromId = default);
 
@@ -239,7 +239,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, Paging> TransactionsPendingList(string connectionId,
+        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsPendingList(string connectionId,
             string accountId = default,
             string fromId = default);
 
@@ -278,7 +278,7 @@ namespace SaltEdgeNetCore.Client
         /// </param>
         /// <param name="fromId">The id from which the next page of consents starts</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<Consent>, Paging> ConsentsList(string connectionId = default, string customerId = default,
+        Response<IEnumerable<SeConsent>, SePaging> ConsentsList(string connectionId = default, string customerId = default,
             string fromId = default);
 
         /// <summary>
@@ -290,7 +290,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">the id of the customer containing the consent,
         /// required unless connection_id parameter is not null</param>
         /// <returns>Consent instance</returns>
-        Consent ConsentShow(string id, string connectionId = default, string customerId = default);
+        SeConsent ConsentShow(string id, string connectionId = default, string customerId = default);
 
         /// <summary>
         /// Revoke a consent
@@ -301,7 +301,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">the id of the customer containing the consent,
         /// required unless connection_id parameter is not null</param>
         /// <returns>Consent instance</returns>
-        Consent ConsentRevoke(string id, string connectionId = default, string customerId = default);
+        SeConsent ConsentRevoke(string id, string connectionId = default, string customerId = default);
 
         /// <summary>
         /// The list of all the categories
@@ -315,26 +315,26 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">The id of the customer</param>
         /// <param name="transactionsList">A list of category learn object</param>
         /// <returns>CategoryLearnResponse instance</returns>
-        CategoryLearnResponse CategoryLearn(string customerId, IEnumerable<CategoryLearn> transactionsList);
+        CategoryLearnResponse CategoryLearn(string customerId, IEnumerable<SeCategoryLearn> transactionsList);
 
         /// <summary>
         /// The list of all the currencies
         /// </summary>
         /// <returns>A list of Currency object</returns>
-        IEnumerable<Currency> Currencies();
+        IEnumerable<SeCurrency> Currencies();
 
         /// <summary>
         /// The list of all the assets 
         /// </summary>
         /// <returns>A list of Asset object</returns>
-        IEnumerable<Asset> Assets();
+        IEnumerable<SeAsset> Assets();
         
         /// <summary>
         /// The list of all the currency rates
         /// </summary>
         /// <param name="date">Date for which currency rates will be retrieved</param>
         /// <returns>A list of Rates</returns>
-        IEnumerable<Rate> Rates(DateTime? date = null);
+        IEnumerable<SeRate> Rates(DateTime? date = null);
 
         /// <summary>
         /// The list of a merchants information

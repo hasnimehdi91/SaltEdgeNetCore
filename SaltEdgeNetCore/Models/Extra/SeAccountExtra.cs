@@ -5,7 +5,7 @@ using SaltEdgeNetCore.Models.Transaction;
 
 namespace SaltEdgeNetCore.Models.Extra
 {
-    public class AccountExtra
+    public class SeAccountExtra
     {
         [JsonProperty("account_name")]
         public string AccountName { get; set; }
@@ -83,7 +83,7 @@ namespace SaltEdgeNetCore.Models.Extra
         public decimal? TotalPaymentAmount { get; set; }
         
         [JsonProperty("transactions_count")]
-        public Count TransactionsCount { get; set; }
+        public SeTransactionCount TransactionsCount { get; set; }
 
         [JsonProperty("payment_type")]
         public string PaymentType { get; set; }

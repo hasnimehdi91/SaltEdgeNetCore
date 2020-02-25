@@ -2,7 +2,7 @@ using Newtonsoft.Json;
 
 namespace SaltEdgeNetCore.Models.Category
 {
-    public class CategoryLearn
+    public class SeCategoryLearn
     {
         [JsonProperty("id")]
         public string Id { get; set; }
