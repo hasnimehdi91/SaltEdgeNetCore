@@ -75,7 +75,8 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<SeProvider>, SePaging> ProvidersList(DateTime? fromDate = null, string fromId = default,
+        public Response<IEnumerable<SeProvider>, SePaging> ProvidersList(DateTime? fromDate = null,
+            string fromId = default,
             string countryCode = default, string mode = default,
             bool includeFakeProviders = false, bool includeProviderFields = false, string providerKeyOwner = default)
         {
@@ -181,7 +182,8 @@ namespace SaltEdgeNetCore.Client
             return null;
         }
 
-        public Response<IEnumerable<SeCustomer>, SePaging> CustomersList(string fromId = default, string nextId = default)
+        public Response<IEnumerable<SeCustomer>, SePaging> CustomersList(string fromId = default,
+            string nextId = default)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
 

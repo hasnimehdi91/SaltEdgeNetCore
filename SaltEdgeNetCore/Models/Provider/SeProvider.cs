@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
-using SaltEdgeNetCore.Models.Extra;
 
 namespace SaltEdgeNetCore.Models.Provider
 {
@@ -83,10 +82,10 @@ namespace SaltEdgeNetCore.Models.Provider
         public IEnumerable<string> SupportedFetchScopes { get; set; }
         
         [JsonProperty("supported_account_extra_fields")]
-        public IEnumerable<SeAccountExtra> SupportedAccountExtraFields { get; set; }
+        public IEnumerable<string> SupportedAccountExtraFields { get; set; }
 
         [JsonProperty("supported_transaction_extra_fields")]
-        public IEnumerable<SeTransactionExtra> SupportedTransactionExtraFields { get; set; }
+        public IEnumerable<string> SupportedTransactionExtraFields { get; set; }
 
         [JsonProperty("supported_account_natures")]
         public IEnumerable<string> SupportedAccountNatures { get; set; }
