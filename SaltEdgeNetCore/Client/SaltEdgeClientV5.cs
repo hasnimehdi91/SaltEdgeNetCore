@@ -1,8 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Net;
+using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.OpenSsl;
+using Org.BouncyCastle.Security;
 using RestSharp;
 using RestSharp.Serializers.NewtonsoftJson;
 using SaltEdgeNetCore.Client.Endpoints;
@@ -31,25 +37,44 @@ namespace SaltEdgeNetCore.Client
 {
     public class SaltEdgeClientV5 : ISaltEdgeClientV5
     {
-        private IDictionary<string, string> _headers;
-
         private IRestClient _client;
 
-        public SaltEdgeClientV5()
+        private readonly SaltEdgeOptions _options;
+
+        private static AsymmetricKeyParameter _privateKey;
+
+        public SaltEdgeClientV5(SaltEdgeOptions options = default)
         {
-            _headers = new Dictionary<string, string>();
+            _options = options;
             _client = GetClient();
+            if (_options.LiveMode && string.IsNullOrWhiteSpace(_options.PrivateKeyPath))
+            {
+                throw new PrivateKeyMissingException("Signing private key is missing");
+            }
+
+            if (_options.LiveMode)
+            {
+                _privateKey = ReadPrivateKey(_options.PrivateKeyPath);
+            }
+
+            JsonConvert.DefaultSettings = () => new JsonSerializerSettings
+            {
+                NullValueHandling = NullValueHandling.Ignore,
+                ReferenceLoopHandling = ReferenceLoopHandling.Ignore
+            };
         }
 
-        public ISaltEdgeClientV5 SetHeaders(IDictionary<string, string> headers)
-        {
-            _headers = headers;
-            _client = GetClient();
-            return this;
-        }
 
         public IEnumerable<SeCountry> ListCountries()
         {
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.CountryList.Value)));
+            }
+
             var apiResponse = _client
                 .Get<SimpleResponse<IEnumerable<SeCountry>>>(new RestRequest(SaltEdgeEndpointsV5.CountryList.Value));
             if (apiResponse.IsSuccessful)
@@ -63,6 +88,14 @@ namespace SaltEdgeNetCore.Client
 
         public SeProvider ProviderShow(string providerCode)
         {
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}")));
+            }
+
             var apiResponse = _client
                 .Get<SimpleResponse<SeProvider>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}"));
@@ -80,52 +113,77 @@ namespace SaltEdgeNetCore.Client
             string countryCode = default, string mode = default,
             bool includeFakeProviders = false, bool includeProviderFields = false, string providerKeyOwner = default)
         {
+            var appendedToUrl = false;
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Providers.Value);
             var request = new RestRequest(SaltEdgeEndpointsV5.Providers.Value);
             if (!string.IsNullOrWhiteSpace(countryCode))
             {
-                request.AddQueryParameter("country_code", countryCode, true);
+                request.AddQueryParameter("country_code", countryCode.ToUpper(), true);
+                url.Append($"?country_code={countryCode.ToUpper()}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append(appendedToUrl ? $"&from_id={fromId}" : $"?from_id={fromId}");
+                appendedToUrl = true;
             }
 
             if (fromDate != null)
             {
                 request.AddQueryParameter("from_date", fromDate.ToString(Config.DateFormat), true);
+                url.Append(appendedToUrl ? $"&from_date={fromDate}" : $"?from_date={fromDate}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(mode))
             {
-                if (mode != "oauth" || mode != "web" || mode != "api" || mode != "file")
+                if (mode == "oauth" && mode == "web" && mode == "api" && mode == "file")
                 {
                     throw new InvalidArgumentException("mode parameter should be 'oauth', 'web', 'api' or 'file'");
                 }
 
                 request.AddQueryParameter("mode", mode, true);
+                url.Append(appendedToUrl ? $"&mode={mode}" : $"?mode={mode}");
+                appendedToUrl = true;
             }
 
             if (includeFakeProviders)
             {
                 request.AddQueryParameter("include_fake_providers", "true", true);
+                url.Append(appendedToUrl ? "&include_fake_providers=true" : "?include_fake_providers=true");
+                appendedToUrl = true;
             }
 
             if (includeProviderFields)
             {
                 request.AddQueryParameter("include_provider_fields", "true", true);
+                url.Append(appendedToUrl ? "&include_provider_fields=true" : "?include_provider_fields=true");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(providerKeyOwner))
             {
-                if (providerKeyOwner != "client" || providerKeyOwner != "saltedge")
+                if (providerKeyOwner != "client" && providerKeyOwner != "saltedge")
                 {
                     throw new InvalidArgumentException("providerKeyOwner parameter should be 'client' or 'saltedge'");
                 }
 
                 request.AddQueryParameter("provider_key_owner", providerKeyOwner, true);
+                url.Append(appendedToUrl
+                    ? $"&provider_key_owner={providerKeyOwner}"
+                    : $"?provider_key_owner={providerKeyOwner}");
             }
 
+            Console.WriteLine(GenerateUrl(url.ToString()));
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client,
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt, GenerateUrl(url.ToString())));
+            }
 
             var apiResponse = _client.Get<Response<IEnumerable<SeProvider>, SePaging>>(request);
             if (apiResponse.IsSuccessful)
@@ -144,14 +202,24 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null customer id");
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
-            request.AddJsonBody(new
+            var body = new
             {
                 data = new
                 {
                     identifier = customerId
                 }
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Customers.Value), body));
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
+            request.AddJsonBody(body);
             var apiResponse = _client.Post<SimpleResponse<SeCustomer>>(request);
 
             if (apiResponse.IsSuccessful)
@@ -170,6 +238,14 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null customer id ");
             }
 
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}")));
+            }
+
             var apiResponse =
                 _client.Get<SimpleResponse<SeCustomer>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
@@ -186,15 +262,28 @@ namespace SaltEdgeNetCore.Client
             string nextId = default)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Customers.Value);
+            var appendedToUrl = false;
 
             if (!string.IsNullOrWhiteSpace(nextId))
             {
                 request.AddQueryParameter("next_id", nextId, true);
+                url.Append($"?next_id={nextId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", nextId, true);
+                url.Append(appendedToUrl ? $"&from_id={nextId}" : $"?from_id={nextId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse =
@@ -216,6 +305,14 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null customer id");
             }
 
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature("DELETE", expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}")));
+            }
+
             var apiResponse =
                 _client.Delete<SimpleResponse<RemoveCustomer>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
@@ -235,6 +332,14 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null customer id");
             }
 
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock")));
+            }
+
             var apiResponse =
                 _client.Put<SimpleResponse<LockCustomer>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock"));
@@ -252,6 +357,14 @@ namespace SaltEdgeNetCore.Client
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Null customer id");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock")));
             }
 
             var apiResponse =
@@ -275,11 +388,21 @@ namespace SaltEdgeNetCore.Client
                     "https://docs.saltedge.com/account_information/v5/#connect_sessions-create");
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create");
-            request.AddJsonBody(new
+            var body = new
             {
                 data = session
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create"), body));
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create");
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
 
@@ -301,11 +424,21 @@ namespace SaltEdgeNetCore.Client
                     "https://docs.saltedge.com/account_information/v5/#connect_sessions-reconnect");
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect");
-            request.AddJsonBody(new
+            var body = new
             {
                 data = session
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect"), body));
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect");
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
 
@@ -329,10 +462,20 @@ namespace SaltEdgeNetCore.Client
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh");
 
-            request.AddJsonBody(new
+            var body = new
             {
                 data = session
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh"), body));
+            }
+
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
 
@@ -350,6 +493,14 @@ namespace SaltEdgeNetCore.Client
             if (oAuthProvider == null)
             {
                 throw new InvalidArgumentException("Null CreateOAuthProvider object");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create"), oAuthProvider));
             }
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create");
@@ -374,6 +525,14 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null ReconnectOAuthProvider object");
             }
 
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect"), oAuthProvider));
+            }
+
             var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect");
             request.AddJsonBody(oAuthProvider);
 
@@ -394,6 +553,14 @@ namespace SaltEdgeNetCore.Client
             if (oAuthProvider == null)
             {
                 throw new InvalidArgumentException("Null AuthorizeOAuthProvider object");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize"), oAuthProvider));
             }
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize");
@@ -419,12 +586,23 @@ namespace SaltEdgeNetCore.Client
             }
 
             var request = new RestRequest(SaltEdgeEndpointsV5.Connections.Value);
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Connections.Value);
 
             request.AddQueryParameter("customer_id", customerId, true);
+            url.Append($"?customer_id={customerId}");
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append($"&from_id={fromId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<Response<IEnumerable<SeConnection>, SePaging>>(request);
@@ -443,6 +621,14 @@ namespace SaltEdgeNetCore.Client
             if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new InvalidArgumentException("Null connection id");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}")));
             }
 
             var apiResponse =
@@ -464,6 +650,14 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null connection id");
             }
 
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature("DELETE", expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}")));
+            }
+
             var apiResponse =
                 _client.Delete<SimpleResponse<RemoveConnection>>(
                     new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
@@ -481,6 +675,14 @@ namespace SaltEdgeNetCore.Client
             if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new InvalidArgumentException("Null connection id");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.HolderInfo.Value}?connection_id={connectionId}")));
             }
 
             var request = new RestRequest(SaltEdgeEndpointsV5.HolderInfo.Value);
@@ -501,6 +703,14 @@ namespace SaltEdgeNetCore.Client
             if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new InvalidArgumentException("Null connection id");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}?connection_id={connectionId}")));
             }
 
             var request = new RestRequest(SaltEdgeEndpointsV5.Attempts.Value);
@@ -529,6 +739,14 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null attempt id");
             }
 
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}?connection_id={connectionId}")));
+            }
+
             var request = new RestRequest($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}");
             request.AddQueryParameter("connection_id", connectionId, true);
             var apiResponse = _client.Get<SimpleResponse<SeAttempt>>(request);
@@ -550,20 +768,35 @@ namespace SaltEdgeNetCore.Client
             }
 
             var request = new RestRequest(SaltEdgeEndpointsV5.Accounts.Value);
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Accounts.Value);
+            var appendedToUrl = false;
 
             if (!string.IsNullOrWhiteSpace(connectionId))
             {
                 request.AddQueryParameter("connection_id", connectionId, true);
+                url.Append($"?connection_id={connectionId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(customerId))
             {
                 request.AddQueryParameter("customer_id", customerId, true);
+                url.Append(appendedToUrl ? $"&customer_id={customerId}" : $"?customer_id={customerId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append(appendedToUrl ? $"&from_id={fromId}" : $"?from_id={fromId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<Response<IEnumerable<SeAccount>, SePaging>>(request);
@@ -587,16 +820,30 @@ namespace SaltEdgeNetCore.Client
             }
 
             var request = new RestRequest(SaltEdgeEndpointsV5.Transactions.Value);
+
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Transactions.Value);
+
             request.AddQueryParameter("connection_id", connectionId, true);
+            url.Append($"?connection_id={connectionId}");
 
             if (!string.IsNullOrWhiteSpace(accountId))
             {
                 request.AddQueryParameter("account_id", accountId, true);
+                url.Append($"&account_id={accountId}");
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append($"&from_id={fromId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, SePaging>>(request);
@@ -619,16 +866,28 @@ namespace SaltEdgeNetCore.Client
             }
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicates");
+            var url = new StringBuilder($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicates");
             request.AddQueryParameter("connection_id", connectionId, true);
+            url.Append($"?connection_id={connectionId}");
 
             if (!string.IsNullOrWhiteSpace(accountId))
             {
                 request.AddQueryParameter("account_id", accountId, true);
+                url.Append($"&account_id={accountId}");
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append($"&from_id={fromId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, SePaging>>(request);
@@ -651,16 +910,28 @@ namespace SaltEdgeNetCore.Client
             }
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/pending");
+            var url = new StringBuilder($"{SaltEdgeEndpointsV5.Transactions.Value}/pending");
             request.AddQueryParameter("connection_id", connectionId, true);
+            url.Append($"?connection_id={connectionId}");
 
             if (!string.IsNullOrWhiteSpace(accountId))
             {
                 request.AddQueryParameter("account_id", accountId, true);
+                url.Append($"&account_id={accountId}");
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append($"&from_id={fromId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<Response<IEnumerable<SaltEdgeTransaction>, SePaging>>(request);
@@ -688,16 +959,26 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null or empty transaction id's list");
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicate");
-
-            request.AddJsonBody(new
+            var body = new
             {
                 data = new
                 {
                     customer_id = customerId,
                     transaction_ids = enumerable
                 }
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicate"), body));
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/duplicate");
+
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Put<SimpleResponse<DuplicatedResponse>>(request);
 
@@ -724,16 +1005,26 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null or empty transaction id's list");
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/unduplicate");
-
-            request.AddJsonBody(new
+            var body = new
             {
                 data = new
                 {
                     customer_id = customerId,
                     transaction_ids = enumerable
                 }
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Transactions.Value}/unduplicate"), body));
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Transactions.Value}/unduplicate");
+
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Put<SimpleResponse<UnDuplicatedResponse>>(request);
 
@@ -758,9 +1049,7 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null account id");
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Transactions.Value);
-
-            request.AddJsonBody(new
+            var body = new
             {
                 data = new
                 {
@@ -768,13 +1057,25 @@ namespace SaltEdgeNetCore.Client
                     account_id = accountId,
                     keep_days = keepDays
                 }
-            });
+            };
 
-            var apiResponse = _client.Delete<SimpleResponse<RemoveTransactionResponse>>(request);
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature("DELETE", expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Transactions.Value), body));
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Transactions.Value);
+
+            request.AddJsonBody(body);
+
+            var apiResponse = _client.Delete<RemoveTransactionResponse>(request);
 
             if (apiResponse.IsSuccessful)
             {
-                return apiResponse.Data.Data;
+                return apiResponse.Data;
             }
 
             HandleError(apiResponse.Content);
@@ -785,19 +1086,40 @@ namespace SaltEdgeNetCore.Client
             string customerId = default, string fromId = default)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Consents.Value);
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Consents.Value);
+            var appendedToUrl = false;
+
+            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Either connection id or customer id should not be null");
+            }
+
             if (!string.IsNullOrWhiteSpace(connectionId))
             {
                 request.AddQueryParameter("connection_id", connectionId, true);
+                url.Append($"?connection_id={connectionId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(customerId))
             {
                 request.AddQueryParameter("customer_id", customerId, true);
+                url.Append(appendedToUrl ? $"&customer_id={customerId}" : $"?customer_id={customerId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
                 request.AddQueryParameter("from_id", fromId, true);
+                url.Append(appendedToUrl ? $"&from_id={fromId}" : $"?from_id={fromId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<Response<IEnumerable<SeConsent>, SePaging>>(request);
@@ -818,22 +1140,35 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null consent id");
             }
 
-            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(connectionId))
+            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Either connection id or customer id should not be null," +
                                                    " please visit the documentation : https://docs.saltedge.com/account_information/v5/#consents-show");
             }
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.Consents.Value}/{id}");
+            var url = new StringBuilder($"{SaltEdgeEndpointsV5.Consents.Value}/{id}");
+            var appendedToUrl = false;
 
             if (!string.IsNullOrWhiteSpace(connectionId))
             {
                 request.AddQueryParameter("connection_id", connectionId, true);
+                url.Append($"?connection_id={connectionId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(customerId))
             {
                 request.AddQueryParameter("customer_id", customerId, true);
+                url.Append(appendedToUrl ? $"&customer_id={customerId}" : $"?customer_id={customerId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Get<SimpleResponse<SeConsent>>(request);
@@ -854,22 +1189,35 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null consent id");
             }
 
-            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(connectionId))
+            if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Either connection id or customer id should not be null," +
                                                    " please visit the documentation : https://docs.saltedge.com/account_information/v5/#consents-revoke");
             }
 
             var request = new RestRequest($"{SaltEdgeEndpointsV5.Consents.Value}/{id}/revoke");
+            var url = new StringBuilder($"{SaltEdgeEndpointsV5.Consents.Value}/{id}/revoke");
+            var appendedToUrl = false;
 
             if (!string.IsNullOrWhiteSpace(connectionId))
             {
                 request.AddQueryParameter("connection_id", connectionId, true);
+                url.Append($"?connection_id={connectionId}");
+                appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(customerId))
             {
                 request.AddQueryParameter("customer_id", customerId, true);
+                url.Append(appendedToUrl ? $"&customer_id={customerId}" : $"?customer_id={customerId}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse = _client.Put<SimpleResponse<SeConsent>>(request);
@@ -885,6 +1233,14 @@ namespace SaltEdgeNetCore.Client
 
         public IDictionary<string, IEnumerable<string>> CategoryList()
         {
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Categories.Value)));
+            }
+
             var apiResponse = _client.Get(new RestRequest(SaltEdgeEndpointsV5.Categories.Value));
             if (apiResponse.IsSuccessful)
             {
@@ -910,16 +1266,26 @@ namespace SaltEdgeNetCore.Client
                                                    "please visit the documentation: https://docs.saltedge.com/account_information/v5/#categories-learn");
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/learn");
-
-            request.AddJsonBody(new
+            var body = new
             {
                 data = new
                 {
                     customer_id = customerId,
                     transactions = categoryLearns
                 }
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl($"{SaltEdgeEndpointsV5.Categories.Value}/learn"), body));
+            }
+
+            var request = new RestRequest($"{SaltEdgeEndpointsV5.Categories.Value}/learn");
+
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Post<SimpleResponse<CategoryLearnResponse>>(request);
 
@@ -934,6 +1300,14 @@ namespace SaltEdgeNetCore.Client
 
         public IEnumerable<SeCurrency> Currencies()
         {
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Currencies.Value)));
+            }
+
             var apiResponse =
                 _client.Get<SimpleResponse<IEnumerable<SeCurrency>>>(
                     new RestRequest(SaltEdgeEndpointsV5.Currencies.Value));
@@ -949,6 +1323,14 @@ namespace SaltEdgeNetCore.Client
 
         public IEnumerable<SeAsset> Assets()
         {
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Assets.Value)));
+            }
+
             var apiResponse =
                 _client.Get<SimpleResponse<IEnumerable<SeAsset>>>(
                     new RestRequest(SaltEdgeEndpointsV5.Assets.Value));
@@ -965,9 +1347,19 @@ namespace SaltEdgeNetCore.Client
         public IEnumerable<SeRate> Rates(DateTime? date = null)
         {
             var request = new RestRequest(SaltEdgeEndpointsV5.Rates.Value);
+            var url = new StringBuilder(SaltEdgeEndpointsV5.Rates.Value);
             if (date != null)
             {
                 request.AddQueryParameter("date", date.ToString(Config.DateFormat), true);
+                url.Append($"?date={date.ToString(Config.DateFormat)}");
+            }
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                    GenerateUrl(url.ToString())));
             }
 
             var apiResponse =
@@ -990,12 +1382,22 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Merchant ids list is null or empty");
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Merchants.Value);
-
-            request.AddJsonBody(new
+            var body = new
             {
                 data = ids
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Merchants.Value), body));
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Merchants.Value);
+
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Post<SimpleResponse<IEnumerable<Merchant>>>(request);
             if (apiResponse.IsSuccessful)
@@ -1014,12 +1416,22 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null merchant id");
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Merchants.Value);
-
-            request.AddJsonBody(new
+            var body = new
             {
                 data = new[] {merchantId}
-            });
+            };
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                _client = AddExpireAt(_client, expireAt);
+                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                    GenerateUrl(SaltEdgeEndpointsV5.Merchants.Value), body));
+            }
+
+            var request = new RestRequest(SaltEdgeEndpointsV5.Merchants.Value);
+
+            request.AddJsonBody(body);
 
             var apiResponse = _client.Post<SimpleResponse<IEnumerable<Merchant>>>(request);
             if (apiResponse.IsSuccessful)
@@ -1063,24 +1475,102 @@ namespace SaltEdgeNetCore.Client
 
         private IRestClient GetClient()
         {
-            if (!_headers.ContainsKey(""))
+            if (string.IsNullOrWhiteSpace(_options.AppId))
             {
-                _headers.Add("Content-Type", "application/json");
+                throw new AppIdMissingException("Salt Edge App-Id is missing");
             }
 
-            if (!_headers.ContainsKey(""))
+            if (string.IsNullOrWhiteSpace(_options.Secret))
             {
-                _headers.Add("Accept", "application/json");
+                throw new SecretMissingException("Salt Edge Secret is missing");
             }
 
-            var client = new RestClient(" https://www.saltedge.com/api/v5/");
-            foreach (var (key, value) in _headers)
+            if (_options.LiveMode)
             {
-                client.AddDefaultHeader(key, value);
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
             }
+
+            var client = new RestClient("https://www.saltedge.com/api/v5/");
+            client.AddDefaultHeader("Content-Type", "application/json");
+            client.AddDefaultHeader("Accept", "application/json");
+            client.AddDefaultHeader("App-id", _options.AppId);
+            client.AddDefaultHeader("Secret", _options.Secret);
 
             client.UseNewtonsoftJson();
             return client;
+        }
+
+        private IRestClient AddExpireAt(IRestClient client, string expireAt)
+        {
+            if (!_options.LiveMode) return client;
+            if (!string.IsNullOrWhiteSpace(_options.PrivateKeyPath))
+            {
+                _client.RemoveDefaultParameter("Expires-at");
+                client.AddDefaultHeader("Expires-at", expireAt);
+            }
+            else
+            {
+                throw new PrivateKeyMissingException("Signing key is missing");
+            }
+
+            return client;
+        }
+
+        private IRestClient AddSignature(IRestClient client, string signature)
+        {
+            if (!_options.LiveMode) return client;
+            _client.RemoveDefaultParameter("Signature");
+            client.AddDefaultHeader("Signature", signature);
+            return client;
+        }
+
+        private int GenerateExpiresAt()
+        {
+            if (_options.WithExpiration == 0)
+            {
+                _options.WithExpiration = 1;
+            }
+
+            var unixBegin = new DateTime(1970, 1, 1);
+            return (int) DateTime.UtcNow.AddMinutes(_options.WithExpiration).Subtract(unixBegin).TotalSeconds;
+        }
+
+        private static string GenerateSignature(string method, string expires, string url, object body = default)
+        {
+            var serializedBody = string.Empty;
+            if (body != null)
+            {
+                serializedBody = JsonConvert.SerializeObject(body);
+            }
+
+            var signature = $"{expires}|{method}|{url}|{serializedBody}";
+            var bytes = Encoding.UTF8.GetBytes(signature);
+            var shaSignature = Sign(bytes);
+
+            return Convert.ToBase64String(shaSignature);
+        }
+
+        private static byte[] Sign(byte[] bytes)
+        {
+            var sig = SignerUtilities.GetSigner("SHA256withRSA");
+            sig.Init(true, _privateKey);
+            sig.BlockUpdate(bytes, 0, bytes.Length);
+            return sig.GenerateSignature();
+        }
+
+        private static AsymmetricKeyParameter ReadPrivateKey(string privateKeyFileName)
+        {
+            AsymmetricCipherKeyPair keyPair;
+
+            using (var reader = File.OpenText(privateKeyFileName))
+                keyPair = (AsymmetricCipherKeyPair) new PemReader(reader).ReadObject();
+
+            return keyPair.Private;
+        }
+
+        private static string GenerateUrl(string endpoint)
+        {
+            return $"https://www.saltedge.com/api/v5/{endpoint}";
         }
     }
 }

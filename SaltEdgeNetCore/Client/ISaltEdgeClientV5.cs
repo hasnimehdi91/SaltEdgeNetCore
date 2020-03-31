@@ -23,13 +23,6 @@ namespace SaltEdgeNetCore.Client
     public interface ISaltEdgeClientV5
     {
         /// <summary>
-        /// Set the HTTP request headers
-        /// </summary>
-        /// <param name="headers"></param>
-        /// <returns></returns>
-        ISaltEdgeClientV5 SetHeaders(IDictionary<string, string> headers);
-
-        /// <summary>
         /// The country is represented just as a string. We’re using ISO 3166-1 alpha-2 country codes.
         /// Thus, all the country codes will have exactly two uppercase letters. There are two special cases:
         /// “Other”, encoded as XO
@@ -218,7 +211,8 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsList(string connectionId, string accountId = default,
+        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsList(string connectionId,
+            string accountId = default,
             string fromId = default);
 
         /// <summary>
@@ -278,7 +272,8 @@ namespace SaltEdgeNetCore.Client
         /// </param>
         /// <param name="fromId">The id from which the next page of consents starts</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SeConsent>, SePaging> ConsentsList(string connectionId = default, string customerId = default,
+        Response<IEnumerable<SeConsent>, SePaging> ConsentsList(string connectionId = default,
+            string customerId = default,
             string fromId = default);
 
         /// <summary>
@@ -328,7 +323,7 @@ namespace SaltEdgeNetCore.Client
         /// </summary>
         /// <returns>A list of Asset object</returns>
         IEnumerable<SeAsset> Assets();
-        
+
         /// <summary>
         /// The list of all the currency rates
         /// </summary>

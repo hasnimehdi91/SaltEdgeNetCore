@@ -6,6 +6,7 @@
 .idea
 TestApp
 SaltEdgeNetCore/Program.cs
+SaltEdgeNetCore/private.pem
 # User-specific files
 *.rsuser
 *.suo

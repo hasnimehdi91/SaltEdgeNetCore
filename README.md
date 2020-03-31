@@ -12,17 +12,36 @@ The API corresponds to the [Salt Edge Documentation](https://docs.saltedge.com/)
 ### Usage
 1- Download nuget package
 ```
-<PackageReference Include="SaltEdgeNetCore" Version="1.0.3" />
+<PackageReference Include="SaltEdgeNetCore" Version="1.1.0" />
 ``` 
 2- In the ConfigureServices method of Startup.cs, register the SaltEdgeNetCore..
+###### Test Mode 
 ```csharp
 public void ConfigureServices(IServiceCollection services)
 {
-    services.AddSaltEdge();
+    services.AddSaltEdge(options =>
+    {
+        options.AppId = "Your App Id";
+        options.Secret = "Your secret";
+        options.LiveMode = false;
+     });
 }
 ```
-
-3- Inject the service on the controller..
+###### Live Mode ([Before you go live](https://docs.saltedge.com/general/#signature))
+```csharp
+public void ConfigureServices(IServiceCollection services)
+{
+    services.AddSaltEdge(options =>
+    {
+        options.AppId = "Your App Id";
+        options.Secret = "Your secret";
+        options.LiveMode = true;
+        options.WithExpiration = 10; // by default it set to expire at at is set to 10 minute 
+        options.PrivateKeyPath = "private.pem" // your private RSA key path;
+     });
+}
+```
+3- Inject the service on the desired controller..
 ```csharp
 public class TestController : Controller
     {
@@ -30,15 +49,6 @@ public class TestController : Controller
         public TestController(ISaltEdgeClientV5 clientV5)
         {
             _clientV5 = clientV5;
-            clientV5.SetHeaders(new Dictionary<string, string>
-            {
-                {
-                    "App-id", "your app id"
-                },
-                {
-                    "Secret", "your secret"
-                }
-            });
         }
         
         // GET
