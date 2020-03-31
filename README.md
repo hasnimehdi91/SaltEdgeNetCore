@@ -36,7 +36,7 @@ public void ConfigureServices(IServiceCollection services)
         options.AppId = "Your App Id";
         options.Secret = "Your secret";
         options.LiveMode = true;
-        options.WithExpiration = 10; // by default it set to expire at at is set to 10 minute 
+        options.WithExpiration = 10; // by default  expire  at is set to 10 minute 
         options.PrivateKeyPath = "private.pem" // your private RSA key path;
      });
 }
