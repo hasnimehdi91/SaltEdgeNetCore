@@ -11,7 +11,7 @@
         <PackageProjectUrl>https://github.com/hansimehdi/SaltEdgeNetCore</PackageProjectUrl>
         <PackageLicenseUrl>https://github.com/hansimehdi/SaltEdgeNetCore/blob/master/LICENSE.txt</PackageLicenseUrl>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-        <PackageVersion>1.1.0</PackageVersion>
+        <PackageVersion>1.1.1</PackageVersion>
     </PropertyGroup>
 
     <ItemGroup>
