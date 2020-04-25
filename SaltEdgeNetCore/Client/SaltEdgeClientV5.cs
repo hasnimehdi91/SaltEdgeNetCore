@@ -274,7 +274,7 @@ namespace SaltEdgeNetCore.Client
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
-                request.AddQueryParameter("from_id", nextId, true);
+                request.AddQueryParameter("from_id", fromId, true);
                 url.Append(appendedToUrl ? $"&from_id={nextId}" : $"?from_id={nextId}");
             }
 
