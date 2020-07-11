@@ -47,12 +47,12 @@ namespace SaltEdgeNetCore.Client
         {
             _options = options;
             _client = GetClient();
-            if (_options.LiveMode && string.IsNullOrWhiteSpace(_options.PrivateKeyPath))
+            if (_options != null && (_options.LiveMode && string.IsNullOrWhiteSpace(_options.PrivateKeyPath)))
             {
                 throw new PrivateKeyMissingException("Signing private key is missing");
             }
 
-            if (_options.LiveMode)
+            if (_options != null && _options.LiveMode)
             {
                 _privateKey = ReadPrivateKey(_options.PrivateKeyPath);
             }
@@ -176,7 +176,6 @@ namespace SaltEdgeNetCore.Client
                     : $"?provider_key_owner={providerKeyOwner}");
             }
 
-            Console.WriteLine(GenerateUrl(url.ToString()));
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
@@ -1505,7 +1504,11 @@ namespace SaltEdgeNetCore.Client
             if (!_options.LiveMode) return client;
             if (!string.IsNullOrWhiteSpace(_options.PrivateKeyPath))
             {
-                _client.RemoveDefaultParameter("Expires-at");
+                if (client.DefaultParameters.Any(x => x.Name == "Expires-at"))
+                {
+                    client.RemoveDefaultParameter("Expires-at");
+                }
+
                 client.AddDefaultHeader("Expires-at", expireAt);
             }
             else
@@ -1519,7 +1522,11 @@ namespace SaltEdgeNetCore.Client
         private IRestClient AddSignature(IRestClient client, string signature)
         {
             if (!_options.LiveMode) return client;
-            _client.RemoveDefaultParameter("Signature");
+            if (client.DefaultParameters.Any(x => x.Name == "Signature"))
+            {
+                client.RemoveDefaultParameter("Signature");
+            }
+
             client.AddDefaultHeader("Signature", signature);
             return client;
         }
