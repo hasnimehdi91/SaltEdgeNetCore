@@ -1951,6 +1951,6 @@ namespace SaltEdgeNetCore.Client
         private static string GenerateUrl(string endpoint) => $"https://www.saltedge.com/api/v5/{endpoint}";
 
         private static StringContent GetBody(object o)
-            => new StringContent(JsonConvert.SerializeObject(o), Encoding.UTF8);
+            => new StringContent(JsonConvert.SerializeObject(o), Encoding.UTF8,"application/json");
     }
 }
