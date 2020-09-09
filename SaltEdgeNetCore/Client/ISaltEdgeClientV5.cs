@@ -215,9 +215,8 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsList(string connectionId,
-            string accountId = default,
-            string fromId = default);
+        Task<Response<IEnumerable<SaltEdgeTransaction>, SePaging>> TransactionsListAsync(string connectionId,
+            string accountId = default, string fromId = default);
 
         /// <summary>
         /// List all duplicated transactions of an account.
@@ -226,9 +225,8 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsDuplicatedList(string connectionId,
-            string accountId = default,
-            string fromId = default);
+        Task<Response<IEnumerable<SaltEdgeTransaction>, SePaging>> TransactionsDuplicatedListAsync(string connectionId,
+            string accountId = default, string fromId = default);
 
         /// <summary>
         /// List all pending transactions of an account.
@@ -237,7 +235,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="fromId">The id of the transaction which the list starts with</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsPendingList(string connectionId,
+        Task<Response<IEnumerable<SaltEdgeTransaction>, SePaging>> TransactionsPendingListAsync(string connectionId,
             string accountId = default,
             string fromId = default);
 
@@ -247,7 +245,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">The id of the customer</param>
         /// <param name="transactionIds">The list of transactions id‘s</param>
         /// <returns>DuplicatedResponse instance</returns>
-        DuplicatedResponse TransactionsDuplicate(string customerId, IEnumerable<string> transactionIds);
+        Task<DuplicatedResponse> TransactionsDuplicateAsync(string customerId, IEnumerable<string> transactionIds);
 
         /// <summary>
         /// Remove duplicated flag from a list of transactions.
@@ -255,7 +253,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">The id of the customer</param>
         /// <param name="transactionIds">The list of transactions id‘s</param>
         /// <returns>UnDuplicatedResponse instance</returns>
-        UnDuplicatedResponse TransactionsUnDuplicate(string customerId, IEnumerable<string> transactionIds);
+        Task<UnDuplicatedResponse> TransactionsUnDuplicateAsync(string customerId, IEnumerable<string> transactionIds);
 
         /// <summary>
         /// Remove transactions older than a specified period.
@@ -264,7 +262,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="accountId">The id of the account</param>
         /// <param name="keepDays">The amount of days for which the transactions will be kept.</param>
         /// <returns></returns>
-        RemoveTransactionResponse TransactionRemove(string customerId, string accountId, int keepDays = 0);
+        Task<RemoveTransactionResponse> TransactionRemoveAsync(string customerId, string accountId, int keepDays = 0);
 
         /// <summary>
         /// List all the consents accessible to your application for certain customer or connection.
@@ -276,7 +274,7 @@ namespace SaltEdgeNetCore.Client
         /// </param>
         /// <param name="fromId">The id from which the next page of consents starts</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SeConsent>, SePaging> ConsentsList(string connectionId = default,
+        Task<Response<IEnumerable<SeConsent>, SePaging>> ConsentsListAsync(string connectionId = default,
             string customerId = default,
             string fromId = default);
 
@@ -289,7 +287,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">the id of the customer containing the consent,
         /// required unless connection_id parameter is not null</param>
         /// <returns>Consent instance</returns>
-        SeConsent ConsentShow(string id, string connectionId = default, string customerId = default);
+        Task<SeConsent> ConsentShowAsync(string id, string connectionId = default, string customerId = default);
 
         /// <summary>
         /// Revoke a consent
@@ -300,13 +298,13 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">the id of the customer containing the consent,
         /// required unless connection_id parameter is not null</param>
         /// <returns>Consent instance</returns>
-        SeConsent ConsentRevoke(string id, string connectionId = default, string customerId = default);
+        Task<SeConsent> ConsentRevokeAsync(string id, string connectionId = default, string customerId = default);
 
         /// <summary>
         /// The list of all the categories
         /// </summary>
         /// <returns>An object instance structured as parent and child</returns>
-        IDictionary<string, IEnumerable<string>> CategoryList();
+        Task<IDictionary<string, IEnumerable<string>>> CategoryListAsync();
 
         /// <summary>
         /// Change the category of some transactions, thus improving the categorization accuracy.
@@ -314,39 +312,39 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">The id of the customer</param>
         /// <param name="transactionsList">A list of category learn object</param>
         /// <returns>CategoryLearnResponse instance</returns>
-        CategoryLearnResponse CategoryLearn(string customerId, IEnumerable<SeCategoryLearn> transactionsList);
+        Task<CategoryLearnResponse> CategoryLearnAsync(string customerId, IEnumerable<SeCategoryLearn> transactionsList);
 
         /// <summary>
         /// The list of all the currencies
         /// </summary>
         /// <returns>A list of Currency object</returns>
-        IEnumerable<SeCurrency> Currencies();
+        Task<IEnumerable<SeCurrency>> CurrenciesAsync();
 
         /// <summary>
         /// The list of all the assets 
         /// </summary>
         /// <returns>A list of Asset object</returns>
-        IEnumerable<SeAsset> Assets();
+        Task<IEnumerable<SeAsset>> AssetsAsync();
 
         /// <summary>
         /// The list of all the currency rates
         /// </summary>
         /// <param name="date">Date for which currency rates will be retrieved</param>
         /// <returns>A list of Rates</returns>
-        IEnumerable<SeRate> Rates(DateTime? date = null);
+        Task<IEnumerable<SeRate>> RatesAsync(DateTime? date = null);
 
         /// <summary>
         /// The list of a merchants information
         /// </summary>
         /// <param name="merchantIds">The list of the merchant id's to be fetched</param>
         /// <returns>A list of Merchant object</returns>
-        IEnumerable<Merchant> MerchantsList(IEnumerable<string> merchantIds);
+        Task<IEnumerable<Merchant>> MerchantsListAsync(IEnumerable<string> merchantIds);
 
         /// <summary>
         /// Show a merchant information
         /// </summary>
         /// <param name="merchantId">The merchant id to be fetched</param>
         /// <returns>Merchant instance</returns>
-        Merchant MerchantShow(string merchantId);
+        Task<Merchant> MerchantShowAsync(string merchantId);
     }
 }
