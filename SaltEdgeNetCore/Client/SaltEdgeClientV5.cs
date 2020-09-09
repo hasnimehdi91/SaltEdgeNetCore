@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Org.BouncyCastle.Crypto;
+using Org.BouncyCastle.Crypto.Parameters;
 using Org.BouncyCastle.OpenSsl;
 using Org.BouncyCastle.Security;
 using RestSharp;
@@ -43,6 +47,8 @@ namespace SaltEdgeNetCore.Client
 
         private static AsymmetricKeyParameter _privateKey;
 
+        private static RsaKeyParameters _publicKey;
+
         public SaltEdgeClientV5(SaltEdgeOptions options = default)
         {
             _options = options;
@@ -57,6 +63,11 @@ namespace SaltEdgeNetCore.Client
                 _privateKey = ReadPrivateKey(_options.PrivateKeyPath);
             }
 
+            if (options != null && options.LiveMode && !string.IsNullOrWhiteSpace(options.PublicKeyPath))
+            {
+                _publicKey = ReadPublicKey(options.PublicKeyPath);
+            }
+
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore,
@@ -65,74 +76,93 @@ namespace SaltEdgeNetCore.Client
         }
 
 
-        public IEnumerable<SeCountry> ListCountries()
+        public async Task<IEnumerable<SeCountry>> ListCountriesAsync()
         {
+            using var client = Client();
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature", GenerateSignature(
+                    WebRequestMethods.Http.Get, expireAt,
                     GenerateUrl(SaltEdgeEndpointsV5.CountryList.Value)));
             }
 
-            var apiResponse = _client
-                .Get<SimpleResponse<IEnumerable<SeCountry>>>(new RestRequest(SaltEdgeEndpointsV5.CountryList.Value));
-            if (apiResponse.IsSuccessful)
+            var response = await client.GetAsync(GenerateUrl(SaltEdgeEndpointsV5.CountryList.Value));
+
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<IEnumerable<SeCountry>>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SeProvider ProviderShow(string providerCode)
+        public async Task<SeProvider> ProviderShowAsync(string providerCode)
         {
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature", GenerateSignature(
+                    WebRequestMethods.Http.Get, expireAt,
                     GenerateUrl($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}")));
             }
 
-            var apiResponse = _client
-                .Get<SimpleResponse<SeProvider>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}"));
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .GetAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Providers.Value}/{providerCode}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SeProvider>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public Response<IEnumerable<SeProvider>, SePaging> ProvidersList(DateTime? fromDate = null,
+        public async Task<Response<IEnumerable<SeProvider>, SePaging>> ProvidersListAsync(DateTime? fromDate = null,
             string fromId = default,
             string countryCode = default, string mode = default,
             bool includeFakeProviders = false, bool includeProviderFields = false, string providerKeyOwner = default)
         {
+            using var client = Client();
             var appendedToUrl = false;
             var url = new StringBuilder(SaltEdgeEndpointsV5.Providers.Value);
-            var request = new RestRequest(SaltEdgeEndpointsV5.Providers.Value);
             if (!string.IsNullOrWhiteSpace(countryCode))
             {
-                request.AddQueryParameter("country_code", countryCode.ToUpper(), true);
                 url.Append($"?country_code={countryCode.ToUpper()}");
                 appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
-                request.AddQueryParameter("from_id", fromId, true);
                 url.Append(appendedToUrl ? $"&from_id={fromId}" : $"?from_id={fromId}");
                 appendedToUrl = true;
             }
 
             if (fromDate != null)
             {
-                request.AddQueryParameter("from_date", fromDate.ToString(Config.DateFormat), true);
                 url.Append(appendedToUrl ? $"&from_date={fromDate}" : $"?from_date={fromDate}");
                 appendedToUrl = true;
             }
@@ -144,21 +174,18 @@ namespace SaltEdgeNetCore.Client
                     throw new InvalidArgumentException("mode parameter should be 'oauth', 'web', 'api' or 'file'");
                 }
 
-                request.AddQueryParameter("mode", mode, true);
                 url.Append(appendedToUrl ? $"&mode={mode}" : $"?mode={mode}");
                 appendedToUrl = true;
             }
 
             if (includeFakeProviders)
             {
-                request.AddQueryParameter("include_fake_providers", "true", true);
                 url.Append(appendedToUrl ? "&include_fake_providers=true" : "?include_fake_providers=true");
                 appendedToUrl = true;
             }
 
             if (includeProviderFields)
             {
-                request.AddQueryParameter("include_provider_fields", "true", true);
                 url.Append(appendedToUrl ? "&include_provider_fields=true" : "?include_provider_fields=true");
                 appendedToUrl = true;
             }
@@ -170,7 +197,6 @@ namespace SaltEdgeNetCore.Client
                     throw new InvalidArgumentException("providerKeyOwner parameter should be 'client' or 'saltedge'");
                 }
 
-                request.AddQueryParameter("provider_key_owner", providerKeyOwner, true);
                 url.Append(appendedToUrl
                     ? $"&provider_key_owner={providerKeyOwner}"
                     : $"?provider_key_owner={providerKeyOwner}");
@@ -179,27 +205,39 @@ namespace SaltEdgeNetCore.Client
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client,
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
                     GenerateSignature(WebRequestMethods.Http.Get, expireAt, GenerateUrl(url.ToString())));
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<SeProvider>, SePaging>>(request);
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .GetAsync(url.ToString());
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<Response<IEnumerable<SeProvider>, SePaging>>(content);
+                return apiResponse;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SeCustomer CreateCustomer(string customerId)
+        public async Task<SeCustomer> CreateCustomerAsync(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Null customer id");
             }
+
+            using var client = Client();
 
             var body = new
             {
@@ -212,173 +250,233 @@ namespace SaltEdgeNetCore.Client
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
-                    GenerateUrl(SaltEdgeEndpointsV5.Customers.Value), body));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                        GenerateUrl(SaltEdgeEndpointsV5.Customers.Value), body));
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
-            request.AddJsonBody(body);
-            var apiResponse = _client.Post<SimpleResponse<SeCustomer>>(request);
+            var response = await client
+                .PostAsync(GenerateUrl(SaltEdgeEndpointsV5.Customers.Value), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SeCustomer>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SeCustomer CustomerShow(string customerId)
+        public async Task<SeCustomer> CustomerShowAsync(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Null customer id ");
             }
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}")));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}")));
             }
 
-            var apiResponse =
-                _client.Get<SimpleResponse<SeCustomer>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .GetAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SeCustomer>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public Response<IEnumerable<SeCustomer>, SePaging> CustomersList(string fromId = default,
+        public async Task<Response<IEnumerable<SeCustomer>, SePaging>> CustomersListAsync(string fromId = default,
             string nextId = default)
         {
-            var request = new RestRequest(SaltEdgeEndpointsV5.Customers.Value);
             var url = new StringBuilder(SaltEdgeEndpointsV5.Customers.Value);
             var appendedToUrl = false;
 
             if (!string.IsNullOrWhiteSpace(nextId))
             {
-                request.AddQueryParameter("next_id", nextId, true);
                 url.Append($"?next_id={nextId}");
                 appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
-                request.AddQueryParameter("from_id", fromId, true);
                 url.Append(appendedToUrl ? $"&from_id={fromId}" : $"?from_id={fromId}");
             }
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl(url.ToString())));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl(url.ToString())));
             }
 
-            var apiResponse =
-                _client.Get<Response<IEnumerable<SeCustomer>, SePaging>>(
-                    request);
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .GetAsync(url.ToString());
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
+                HandleError(content);
+            }
+
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<Response<IEnumerable<SeCustomer>, SePaging>>(content);
+                return apiResponse;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
+        }
+
+        public async Task<RemoveCustomer> CustomerRemoveAsync(string customerId)
+        {
+            if (string.IsNullOrWhiteSpace(customerId))
+            {
+                throw new InvalidArgumentException("Null customer id");
+            }
+
+            using var client = Client();
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature("DELETE", expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}")));
+            }
+
+            var response = await client
+                .DeleteAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                HandleError(content);
+            }
+
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<RemoveCustomer>>(content);
                 return apiResponse.Data;
             }
-
-            HandleError(apiResponse.Content);
-            return null;
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public RemoveCustomer CustomerRemove(string customerId)
+        public async Task<LockCustomer> CustomerLockAsync(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Null customer id");
             }
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature("DELETE", expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}")));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock")));
             }
 
-            var apiResponse =
-                _client.Delete<SimpleResponse<RemoveCustomer>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}"));
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .PutAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock"), null);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<LockCustomer>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public LockCustomer CustomerLock(string customerId)
+        public async Task<UnlockCustomer> CustomerUnlockAsync(string customerId)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Null customer id");
             }
 
-            if (_options.LiveMode)
-            {
-                var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock")));
-            }
-
-            var apiResponse =
-                _client.Put<SimpleResponse<LockCustomer>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/lock"));
-            if (apiResponse.IsSuccessful)
-            {
-                return apiResponse.Data.Data;
-            }
-
-            HandleError(apiResponse.Content);
-            return null;
-        }
-
-        public UnlockCustomer CustomerUnlock(string customerId)
-        {
-            if (string.IsNullOrWhiteSpace(customerId))
-            {
-                throw new InvalidArgumentException("Null customer id");
-            }
+            using var client = Client();
 
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock")));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock")));
             }
 
-            var apiResponse =
-                _client.Put<SimpleResponse<UnlockCustomer>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock"));
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .PutAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Customers.Value}/{customerId}/unlock"), null);
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<UnlockCustomer>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SessionResponse SessionCreate(CreateSession session)
+        public async Task<SessionResponse> SessionCreateAsync(CreateSession session)
         {
             if (session == null || string.IsNullOrWhiteSpace(session.CustomerId))
             {
@@ -392,29 +490,38 @@ namespace SaltEdgeNetCore.Client
                 data = session
             };
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create"), body));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create"), body));
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create");
-            request.AddJsonBody(body);
+            var response = await client
+                .PostAsync(GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/create"), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
-
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SessionResponse>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SessionResponse SessionReconnect(ReconnectSession session)
+        public async Task<SessionResponse> SessionReconnectAsync(ReconnectSession session)
         {
             if (session == null || string.IsNullOrWhiteSpace(session.ConnectionId))
             {
@@ -428,29 +535,38 @@ namespace SaltEdgeNetCore.Client
                 data = session
             };
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect"), body));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect"), body));
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect");
-            request.AddJsonBody(body);
+            var response = await client
+                .PostAsync(GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/reconnect"), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
-
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SessionResponse>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SessionResponse SessionRefresh(RefreshSession session)
+        public async Task<SessionResponse> SessionRefreshAsync(RefreshSession session)
         {
             if (session == null || string.IsNullOrWhiteSpace(session.ConnectionId))
             {
@@ -459,274 +575,374 @@ namespace SaltEdgeNetCore.Client
                     "https://docs.saltedge.com/account_information/v5/#connect_sessions-reconnect");
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh");
-
             var body = new
             {
                 data = session
             };
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh"), body));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh"), body));
             }
 
-            request.AddJsonBody(body);
+            var response = await client
+                .PostAsync(GenerateUrl($"{SaltEdgeEndpointsV5.ConnectSessions.Value}/refresh"), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            var apiResponse = _client.Post<SimpleResponse<SessionResponse>>(request);
-
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SessionResponse>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public OAuthProviderResponse OAuthProviderCreate(CreateOAuthProvider oAuthProvider)
+        public async Task<OAuthProviderResponse> OAuthProviderCreateAsync(CreateOAuthProvider oAuthProvider)
         {
             if (oAuthProvider == null)
             {
                 throw new InvalidArgumentException("Null CreateOAuthProvider object");
             }
 
+            using var client = Client();
+
+            var body = new
+            {
+                date = oAuthProvider
+            };
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create"), oAuthProvider));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create"), body));
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create");
-            request.AddJsonBody(oAuthProvider);
+            var response = await client
+                .PostAsync(GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/create"), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            var apiResponse =
-                _client.Post<SimpleResponse<OAuthProviderResponse>>(request);
-
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<OAuthProviderResponse>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public OAuthProviderResponse OAuthProviderReconnect(ReconnectOAuthProvider oAuthProvider)
+        public async Task<OAuthProviderResponse> OAuthProviderReconnectAsync(ReconnectOAuthProvider oAuthProvider)
         {
             if (oAuthProvider == null)
             {
                 throw new InvalidArgumentException("Null ReconnectOAuthProvider object");
             }
 
+            using var client = Client();
+
+            var body = new
+            {
+                date = oAuthProvider
+            };
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Post, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect"), oAuthProvider));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Post, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect"), body));
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect");
-            request.AddJsonBody(oAuthProvider);
+            var response = await client
+                .PostAsync(GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/reconnect"), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            var apiResponse =
-                _client.Post<SimpleResponse<OAuthProviderResponse>>(request);
-
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<OAuthProviderResponse>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public AuthorizeOAuthProviderResponse AuthProviderAuthorize(AuthorizeOAuthProvider oAuthProvider)
+        public async Task<AuthorizeOAuthProviderResponse> AuthProviderAuthorizeAsync(
+            AuthorizeOAuthProvider oAuthProvider)
         {
             if (oAuthProvider == null)
             {
                 throw new InvalidArgumentException("Null AuthorizeOAuthProvider object");
             }
 
+            using var client = Client();
+
+            var body = new
+            {
+                data = oAuthProvider
+            };
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Put, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize"), oAuthProvider));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Put, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize"), body));
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize");
-            request.AddJsonBody(oAuthProvider);
+            var response = await client
+                .PostAsync(GenerateUrl($"{SaltEdgeEndpointsV5.OauthProviders.Value}/authorize"), GetBody(body));
+            var content = await response.Content.ReadAsStringAsync();
 
-            var apiResponse =
-                _client.Put<SimpleResponse<AuthorizeOAuthProviderResponse>>(request);
-
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse =
+                    JsonConvert.DeserializeObject<SimpleResponse<AuthorizeOAuthProviderResponse>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public Response<IEnumerable<SeConnection>, SePaging> ConnectionsList(string customerId, string fromId = default)
+        public async Task<Response<IEnumerable<SeConnection>, SePaging>> ConnectionsListAsync(string customerId,
+            string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(customerId))
             {
                 throw new InvalidArgumentException("Null customer id");
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Connections.Value);
             var url = new StringBuilder(SaltEdgeEndpointsV5.Connections.Value);
 
-            request.AddQueryParameter("customer_id", customerId, true);
             url.Append($"?customer_id={customerId}");
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
-                request.AddQueryParameter("from_id", fromId, true);
                 url.Append($"&from_id={fromId}");
             }
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl(url.ToString())));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl(url.ToString())));
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<SeConnection>, SePaging>>(request);
+            var response = await client
+                .GetAsync(url.ToString());
+            var content = await response.Content.ReadAsStringAsync();
 
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
+                HandleError(content);
+            }
+
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<Response<IEnumerable<SeConnection>, SePaging>>(content);
+                return apiResponse;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
+        }
+
+        public async Task<SeConnection> ConnectionShowAsync(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            using var client = Client();
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}")));
+            }
+
+            var response = await client
+                .GetAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                HandleError(content);
+            }
+
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SeConnection>>(content);
                 return apiResponse.Data;
             }
-
-            HandleError(apiResponse.Content);
-            return null;
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SeConnection ConnectionShow(string connectionId)
+        public async Task<RemoveConnection> ConnectionRemoveAsync(string connectionId)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
             {
                 throw new InvalidArgumentException("Null connection id");
             }
 
-            if (_options.LiveMode)
-            {
-                var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}")));
-            }
-
-            var apiResponse =
-                _client.Get<SimpleResponse<SeConnection>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
-            if (apiResponse.IsSuccessful)
-            {
-                return apiResponse.Data.Data;
-            }
-
-            HandleError(apiResponse.Content);
-            return null;
-        }
-
-        public RemoveConnection ConnectionRemove(string connectionId)
-        {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                throw new InvalidArgumentException("Null connection id");
-            }
+            using var client = Client();
 
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature("DELETE", expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}")));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature("DELETE", expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}")));
             }
 
-            var apiResponse =
-                _client.Delete<SimpleResponse<RemoveConnection>>(
-                    new RestRequest($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .DeleteAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Connections.Value}/{connectionId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
-        }
-
-        public SeHolderInfo HolderInfoShow(string connectionId)
-        {
-            if (string.IsNullOrWhiteSpace(connectionId))
+            try
             {
-                throw new InvalidArgumentException("Null connection id");
-            }
-
-            if (_options.LiveMode)
-            {
-                var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.HolderInfo.Value}?connection_id={connectionId}")));
-            }
-
-            var request = new RestRequest(SaltEdgeEndpointsV5.HolderInfo.Value);
-            request.AddQueryParameter("connection_id", connectionId, true);
-
-            var apiResponse = _client.Get<SimpleResponse<SeHolderInfo>>(request);
-            if (apiResponse.IsSuccessful)
-            {
-                return apiResponse.Data.Data;
-            }
-
-            HandleError(apiResponse.Content);
-            return null;
-        }
-
-        public Response<IEnumerable<SeAttempt>, SePaging> AttemptsList(string connectionId)
-        {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                throw new InvalidArgumentException("Null connection id");
-            }
-
-            if (_options.LiveMode)
-            {
-                var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}?connection_id={connectionId}")));
-            }
-
-            var request = new RestRequest(SaltEdgeEndpointsV5.Attempts.Value);
-            request.AddQueryParameter("connection_id", connectionId, true);
-
-            var apiResponse = _client.Get<Response<IEnumerable<SeAttempt>, SePaging>>(request);
-
-            if (apiResponse.IsSuccessful)
-            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<RemoveConnection>>(content);
                 return apiResponse.Data;
             }
-
-            HandleError(apiResponse.Content);
-            return null;
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public SeAttempt AttemptShow(string connectionId, string attemptId)
+        public async Task<SeHolderInfo> HolderInfoShowAsync(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            using var client = Client();
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.HolderInfo.Value}?connection_id={connectionId}")));
+            }
+
+            var response = await client
+                .GetAsync(GenerateUrl($"{SaltEdgeEndpointsV5.HolderInfo.Value}?connection_id={connectionId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                HandleError(content);
+            }
+
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SeHolderInfo>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
+        }
+
+        public async Task<Response<IEnumerable<SeAttempt>, SePaging>> AttemptsListAsync(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                throw new InvalidArgumentException("Null connection id");
+            }
+
+            using var client = Client();
+
+            if (_options.LiveMode)
+            {
+                var expireAt = GenerateExpiresAt().ToString();
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}?connection_id={connectionId}")));
+            }
+
+            var response = await client
+                .GetAsync(GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}?connection_id={connectionId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                HandleError(content);
+            }
+
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<Response<IEnumerable<SeAttempt>, SePaging>>(content);
+                return apiResponse;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
+        }
+
+        public async Task<SeAttempt> AttemptShowAsync(string connectionId, string attemptId)
         {
             if (string.IsNullOrWhiteSpace(connectionId))
             {
@@ -738,27 +954,39 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Null attempt id");
             }
 
+            using var client = Client();
+
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}?connection_id={connectionId}")));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}?connection_id={connectionId}")));
             }
 
-            var request = new RestRequest($"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}");
-            request.AddQueryParameter("connection_id", connectionId, true);
-            var apiResponse = _client.Get<SimpleResponse<SeAttempt>>(request);
-            if (apiResponse.IsSuccessful)
+            var response = await client
+                .GetAsync(GenerateUrl(
+                    $"{SaltEdgeEndpointsV5.Attempts.Value}/{attemptId}?connection_id={connectionId}"));
+            var content = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<SimpleResponse<SeAttempt>>(content);
+                return apiResponse.Data;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
-        public Response<IEnumerable<SeAccount>, SePaging> AccountList(string connectionId, string customerId = default,
+        public async Task<Response<IEnumerable<SeAccount>, SePaging>> AccountListAsync(string connectionId, string customerId = default,
             string fromId = default)
         {
             if (string.IsNullOrWhiteSpace(connectionId) && string.IsNullOrWhiteSpace(customerId))
@@ -766,48 +994,55 @@ namespace SaltEdgeNetCore.Client
                 throw new InvalidArgumentException("Either connection id or customer id should not be null");
             }
 
-            var request = new RestRequest(SaltEdgeEndpointsV5.Accounts.Value);
             var url = new StringBuilder(SaltEdgeEndpointsV5.Accounts.Value);
             var appendedToUrl = false;
 
             if (!string.IsNullOrWhiteSpace(connectionId))
             {
-                request.AddQueryParameter("connection_id", connectionId, true);
                 url.Append($"?connection_id={connectionId}");
                 appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(customerId))
             {
-                request.AddQueryParameter("customer_id", customerId, true);
                 url.Append(appendedToUrl ? $"&customer_id={customerId}" : $"?customer_id={customerId}");
                 appendedToUrl = true;
             }
 
             if (!string.IsNullOrWhiteSpace(fromId))
             {
-                request.AddQueryParameter("from_id", fromId, true);
                 url.Append(appendedToUrl ? $"&from_id={fromId}" : $"?from_id={fromId}");
             }
+            
+            using var client = Client();
 
             if (_options.LiveMode)
             {
                 var expireAt = GenerateExpiresAt().ToString();
-                _client = AddExpireAt(_client, expireAt);
-                _client = AddSignature(_client, GenerateSignature(WebRequestMethods.Http.Get, expireAt,
-                    GenerateUrl(url.ToString())));
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Expires-at", expireAt);
+                client.DefaultRequestHeaders.TryAddWithoutValidation("Signature",
+                    GenerateSignature(WebRequestMethods.Http.Get, expireAt,
+                        GenerateUrl(url.ToString())));
             }
 
-            var apiResponse = _client.Get<Response<IEnumerable<SeAccount>, SePaging>>(request);
+            var response = await client
+                .GetAsync(url.ToString());
+            var content = await response.Content.ReadAsStringAsync();
 
-            if (apiResponse.IsSuccessful)
+            if (!response.IsSuccessStatusCode)
             {
-                return apiResponse.Data;
+                HandleError(content);
             }
 
-            HandleError(apiResponse.Content);
-
-            return null;
+            try
+            {
+                var apiResponse = JsonConvert.DeserializeObject<Response<IEnumerable<SeAccount>, SePaging>>(content);
+                return apiResponse;
+            }
+            catch (Exception e)
+            {
+                throw new Exception($"{typeof(ISaltEdgeClientV5)}: Deserialization Exception \n {e.Message}");
+            }
         }
 
         public Response<IEnumerable<SaltEdgeTransaction>, SePaging> TransactionsList(string connectionId,
@@ -1472,6 +1707,24 @@ namespace SaltEdgeNetCore.Client
             ErrorHandler.Handle(error.Error.Class, error.Error.Message);
         }
 
+
+        private HttpClient Client()
+        {
+            var client = new HttpClient();
+
+            if (_options.LiveMode)
+            {
+                ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            }
+
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Content-Type", "application/json");
+            client.DefaultRequestHeaders.TryAddWithoutValidation("App-id", _options.AppId);
+            client.DefaultRequestHeaders.TryAddWithoutValidation("Secret", _options.Secret);
+
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            return client;
+        }
+
         private IRestClient GetClient()
         {
             if (string.IsNullOrWhiteSpace(_options.AppId))
@@ -1567,17 +1820,38 @@ namespace SaltEdgeNetCore.Client
 
         private static AsymmetricKeyParameter ReadPrivateKey(string privateKeyFileName)
         {
-            AsymmetricCipherKeyPair keyPair;
-
-            using (var reader = File.OpenText(privateKeyFileName))
-                keyPair = (AsymmetricCipherKeyPair) new PemReader(reader).ReadObject();
+            using var reader = File.OpenText(privateKeyFileName);
+            var keyPair = (AsymmetricCipherKeyPair) new PemReader(reader).ReadObject();
 
             return keyPair.Private;
         }
 
-        private static string GenerateUrl(string endpoint)
+
+        private static RsaKeyParameters ReadPublicKey(string fileName)
         {
-            return $"https://www.saltedge.com/api/v5/{endpoint}";
+            using var reader = File.OpenText(fileName);
+            var keyPair = (RsaKeyParameters) new PemReader(reader).ReadObject();
+
+            return keyPair;
         }
+
+        public bool Verify(string url, string requestBody, string signature)
+        {
+            var sig = SignerUtilities.GetSigner("SHA256withRSA");
+            sig.Init(false, _publicKey);
+
+            var input = $"{url}|{requestBody}";
+            var bytes = Encoding.UTF8.GetBytes(input);
+
+            var decodedSignature = Convert.FromBase64String(signature);
+
+            sig.BlockUpdate(bytes, 0, bytes.Length);
+            return sig.VerifySignature(decodedSignature);
+        }
+
+        private static string GenerateUrl(string endpoint) => $"https://www.saltedge.com/api/v5/{endpoint}";
+
+        private static StringContent GetBody(object o)
+            => new StringContent(JsonConvert.SerializeObject(o), Encoding.UTF8);
     }
 }

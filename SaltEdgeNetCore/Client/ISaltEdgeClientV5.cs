@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using SaltEdgeNetCore.Models.Account;
 using SaltEdgeNetCore.Models.Assets;
 using SaltEdgeNetCore.Models.Attempts;
@@ -29,7 +30,7 @@ namespace SaltEdgeNetCore.Client
         /// “Fake”, encoded as XF
         /// </summary>
         /// <returns>Returns a list of countries supported by Salt Edge API.</returns>
-        IEnumerable<SeCountry> ListCountries();
+        Task<IEnumerable<SeCountry>> ListCountriesAsync();
 
         /// <summary>
         /// Provider show allows you to inspect the single provider in order to give your users a proper
@@ -37,7 +38,7 @@ namespace SaltEdgeNetCore.Client
         /// </summary>
         /// <param name="providerCode"></param>
         /// <returns>Provider instance</returns>
-        SeProvider ProviderShow(string providerCode);
+        Task<SeProvider> ProviderShowAsync(string providerCode);
 
         /// <summary>
         /// Returns all the providers we operate with. If a provider becomes disabled, it is not included in the list.
@@ -54,7 +55,8 @@ namespace SaltEdgeNetCore.Client
         /// <param name="providerKeyOwner">filtering providers by key owner, possible values are: client, saltedge. When value is set as client,
         /// only providers with client-set keys will be returned.</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SeProvider>, SePaging> ProvidersList(DateTime? fromDate = null, string fromId = default,
+        Task<Response<IEnumerable<SeProvider>, SePaging>> ProvidersListAsync(DateTime? fromDate = null,
+            string fromId = default,
             string countryCode = default,
             string mode = default,
             bool includeFakeProviders = false,
@@ -66,14 +68,14 @@ namespace SaltEdgeNetCore.Client
         /// </summary>
         /// <param name="customerId">a unique identifier of the new customer</param>
         /// <returns>Customer instance</returns>
-        SeCustomer CreateCustomer(string customerId);
+        Task<SeCustomer> CreateCustomerAsync(string customerId);
 
         /// <summary>
         /// Get a customer
         /// </summary>
         /// <param name="customerId">the id of the customer</param>
         /// <returns>Customer instance</returns>
-        SeCustomer CustomerShow(string customerId);
+        Task<SeCustomer> CustomerShowAsync(string customerId);
 
         /// <summary>
         /// List all of your app’s customers.
@@ -81,70 +83,71 @@ namespace SaltEdgeNetCore.Client
         /// <param name="fromId"> Starting from id</param>
         /// <param name="nextId"> Next id fetch</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SeCustomer>, SePaging> CustomersList(string fromId = default, string nextId = default);
+        Task<Response<IEnumerable<SeCustomer>, SePaging>> CustomersListAsync(string fromId = default,
+            string nextId = default);
 
         /// <summary>
         /// Remove a customer
         /// </summary>
         /// <param name="customerId">the id of the customer</param>
         /// <returns>RemoveCustomer instance</returns>
-        RemoveCustomer CustomerRemove(string customerId);
+        Task<RemoveCustomer> CustomerRemoveAsync(string customerId);
 
         /// <summary>
         /// Lock a customer and its data 
         /// </summary>
         /// <param name="customerId">the id of the customer</param>
         /// <returns>LockCustomer instance</returns>
-        LockCustomer CustomerLock(string customerId);
+        Task<LockCustomer> CustomerLockAsync(string customerId);
 
         /// <summary>
         /// Unlock a customer and its data
         /// </summary>
         /// <param name="customerId">the id of the customer</param>
         /// <returns>UnlockCustomer instance</returns>
-        UnlockCustomer CustomerUnlock(string customerId);
+        Task<UnlockCustomer> CustomerUnlockAsync(string customerId);
 
         /// <summary>
         /// Allows to create a connect session, which will be used to access Salt Edge Connect for connection creation.
         /// </summary>
         /// <param name="session">CreateSession object</param>
         /// <returns>SessionResponse instance</returns>
-        SessionResponse SessionCreate(CreateSession session);
+        Task<SessionResponse> SessionCreateAsync(CreateSession session);
 
         /// <summary>
         /// Allows to reconnect session, which will be used to access Salt Edge Connect to reconnect a connection.
         /// </summary>
         /// <param name="session">ReconnectSession object</param>
         /// <returns>SessionResponse instance</returns>
-        SessionResponse SessionReconnect(ReconnectSession session);
+        Task<SessionResponse> SessionReconnectAsync(ReconnectSession session);
 
         /// <summary>
         /// Allows refresh a session, which will be used to access Salt Edge Connect to refresh a connection.
         /// </summary>
         /// <param name="session">RefreshSession object</param>
         /// <returns>SessionResponse instance</returns>
-        SessionResponse SessionRefresh(RefreshSession session);
+        Task<SessionResponse> SessionRefreshAsync(RefreshSession session);
 
         /// <summary>
         /// create a connection for an OAuth provider
         /// </summary>
         /// <param name="oAuthProvider">CreateOAuthProvider object</param>
         /// <returns>OAuthProviderResponse instance</returns>
-        OAuthProviderResponse OAuthProviderCreate(CreateOAuthProvider oAuthProvider);
+        Task<OAuthProviderResponse> OAuthProviderCreateAsync(CreateOAuthProvider oAuthProvider);
 
         /// <summary>
         /// reconnect a connection for an OAuth provider
         /// </summary>
         /// <param name="oAuthProvider">ReconnectOAuthProvider object</param>
         /// <returns>OAuthProviderResponse instance</returns>
-        OAuthProviderResponse OAuthProviderReconnect(ReconnectOAuthProvider oAuthProvider);
+        Task<OAuthProviderResponse> OAuthProviderReconnectAsync(ReconnectOAuthProvider oAuthProvider);
 
         /// <summary>
         /// authorize a connection for an OAuth provider when using client owned provider keys.
         /// </summary>
         /// <param name="oAuthProvider">AuthorizeOAuthProvider object</param>
         /// <returns>AuthorizeOAuthProviderResponse instance</returns>
-        AuthorizeOAuthProviderResponse AuthProviderAuthorize(AuthorizeOAuthProvider oAuthProvider);
+        Task<AuthorizeOAuthProviderResponse> AuthProviderAuthorizeAsync(AuthorizeOAuthProvider oAuthProvider);
 
         /// <summary>
         /// List all the connections accessible to your application for certain customer.
@@ -152,35 +155,36 @@ namespace SaltEdgeNetCore.Client
         /// <param name="customerId">The id of the customer</param>
         /// <param name="fromId">Fetch from id</param>
         /// <returns></returns>
-        Response<IEnumerable<SeConnection>, SePaging> ConnectionsList(string customerId, string fromId = default);
+        Task<Response<IEnumerable<SeConnection>, SePaging>> ConnectionsListAsync(string customerId,
+            string fromId = default);
 
         /// <summary>
         /// Get a connection
         /// </summary>
         /// <param name="connectionId">The id of the connection</param>
         /// <returns>Connection instance</returns>
-        SeConnection ConnectionShow(string connectionId);
+        Task<SeConnection> ConnectionShowAsync(string connectionId);
 
         /// <summary>
         /// Removes a connection from our system and revokes the consent.
         /// </summary>
         /// <param name="connectionId">The id of the connection</param>
         /// <returns>RemoveConnection instance</returns>
-        RemoveConnection ConnectionRemove(string connectionId);
+        Task<RemoveConnection> ConnectionRemoveAsync(string connectionId);
 
         /// <summary>
         /// Get essential information about an account holder.
         /// </summary>
         /// <param name="connectionId">The id of the connection</param>
         /// <returns>HolderInfo instance</returns>
-        SeHolderInfo HolderInfoShow(string connectionId);
+        Task<SeHolderInfo> HolderInfoShowAsync(string connectionId);
 
         /// <summary>
         ///  List of all attempts for a certain connection.
         /// </summary>
         /// <param name="connectionId">The id of the connection whose attempts are to be fetched</param>
         /// <returns>Salt Edge Response instance</returns>
-        Response<IEnumerable<SeAttempt>, SePaging> AttemptsList(string connectionId);
+        Task<Response<IEnumerable<SeAttempt>, SePaging>> AttemptsListAsync(string connectionId);
 
         /// <summary>
         /// Show attempt for a certain connection
@@ -188,8 +192,7 @@ namespace SaltEdgeNetCore.Client
         /// <param name="connectionId">The id of the connection whose attempt is to be fetched</param>
         /// <param name="attemptId">The attempt id</param>
         /// <returns>Attempt instance</returns>
-        SeAttempt AttemptShow(string connectionId, string attemptId);
-
+        Task<SeAttempt> AttemptShowAsync(string connectionId, string attemptId);
 
         /// <summary>
         /// list of accounts of a connection to a related customer
@@ -201,7 +204,8 @@ namespace SaltEdgeNetCore.Client
         /// </param>
         /// <param name="fromId">The id of the account which the list starts with</param>
         /// <returns></returns>
-        Response<IEnumerable<SeAccount>, SePaging> AccountList(string connectionId, string customerId = default,
+        Task<Response<IEnumerable<SeAccount>, SePaging>> AccountListAsync(string connectionId,
+            string customerId = default,
             string fromId = default);
 
         /// <summary>
