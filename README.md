@@ -12,7 +12,7 @@ The API corresponds to the [Salt Edge Documentation](https://docs.saltedge.com/)
 ### Usage
 1- Download nuget package
 ```
-<PackageReference Include="SaltEdgeNetCore" Version="1.1.3" />
+<PackageReference Include="SaltEdgeNetCore" Version="1.2.0" />
 ``` 
 2- In the ConfigureServices method of Startup.cs, register the SaltEdgeNetCore..
 ###### Test Mode 
